@@ -70,7 +70,7 @@ final class OverHttp implements Bucket
     {
         $command = $this->client->getCommand('getObject', [
             'Bucket' => $this->bucket,
-            'Key' => ltrim((string) $path, '/'),
+            'Key' => $this->keyFor($path),
         ]);
 
         try {
@@ -87,7 +87,7 @@ final class OverHttp implements Bucket
         try {
             $this->client->upload(
                 $this->bucket,
-                ltrim((string) $path, '/'),
+                $this->keyFor($path),
                 new StreamToPsr($content)
             );
         } catch (S3MultipartUploadException $e) {
@@ -101,7 +101,7 @@ final class OverHttp implements Bucket
             'deleteObject',
             [
                 'Bucket' => $this->bucket,
-                'Key' => ltrim((string) $path, '/'),
+                'Key' => $this->keyFor($path),
             ]
         );
 
@@ -110,6 +110,14 @@ final class OverHttp implements Bucket
 
     public function has(PathInterface $path): bool
     {
-        return $this->client->doesObjectExist($this->bucket, ltrim((string) $path, '/'));
+        return $this->client->doesObjectExist(
+            $this->bucket,
+            $this->keyFor($path)
+        );
+    }
+
+    private function keyFor(PathInterface $path): string
+    {
+        return (string) Str::of((string) $path)->leftTrim('/');
     }
 }
