@@ -189,124 +189,23 @@ class OverHttpTest extends TestCase
 
     public function testFileExists()
     {
-        $bucket = new OverHttp(
-            $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
-        );
-        $client
-            ->expects($this->once())
-            ->method('doesObjectExist')
-            ->with(
-                'bucket-name',
-                'sub/composer.json'
-            )
-            ->willReturn(true);
+        $this
+            ->forAll(Generator\elements(true, false))
+            ->then(function($exist) {
+                $bucket = new OverHttp(
+                    $client = $this->createMock(S3ClientInterface::class),
+                    new Name('bucket-name')
+                );
+                $client
+                    ->expects($this->once())
+                    ->method('doesObjectExist')
+                    ->with(
+                        'bucket-name',
+                        'sub/composer.json'
+                    )
+                    ->willReturn($exist);
 
-        $this->assertTrue($bucket->has(new Path('/sub/composer.json')));
-    }
-
-    public function testCheckIfDirectoryExistWhenNoFileFound()
-    {
-        $bucket = new OverHttp(
-            $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
-        );
-        $client
-            ->expects($this->once())
-            ->method('doesObjectExist')
-            ->with(
-                'bucket-name',
-                'sub'
-            )
-            ->willReturn(false);
-        $client
-            ->expects($this->once())
-            ->method('getCommand')
-            ->with(
-                'listObjects',
-                [
-                    'Bucket' => 'bucket-name',
-                    'Prefix' => 'sub/',
-                    'MaxKeys' => 1,
-                ]
-            )
-            ->willReturn($command = $this->createMock(CommandInterface::class));
-        $client
-            ->expects($this->once())
-            ->method('execute')
-            ->with($command)
-            ->willReturn([]);
-
-        $this->assertFalse($bucket->has(new Path('/sub')));
-    }
-
-    public function testConsiderFileNotExistingWhenFailingToListObjects()
-    {
-        $bucket = new OverHttp(
-            $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
-        );
-        $client
-            ->expects($this->once())
-            ->method('doesObjectExist')
-            ->with(
-                'bucket-name',
-                'sub'
-            )
-            ->willReturn(false);
-        $client
-            ->expects($this->once())
-            ->method('getCommand')
-            ->with(
-                'listObjects',
-                [
-                    'Bucket' => 'bucket-name',
-                    'Prefix' => 'sub/',
-                    'MaxKeys' => 1,
-                ]
-            )
-            ->willReturn($command = $this->createMock(CommandInterface::class));
-        $client
-            ->expects($this->once())
-            ->method('execute')
-            ->with($command)
-            ->will($this->throwException(new S3Exception('', $command)));
-
-        $this->assertFalse($bucket->has(new Path('/sub')));
-    }
-
-    public function testDirectoryExist()
-    {
-        $bucket = new OverHttp(
-            $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
-        );
-        $client
-            ->expects($this->once())
-            ->method('doesObjectExist')
-            ->with(
-                'bucket-name',
-                'sub'
-            )
-            ->willReturn(false);
-        $client
-            ->expects($this->once())
-            ->method('getCommand')
-            ->with(
-                'listObjects',
-                [
-                    'Bucket' => 'bucket-name',
-                    'Prefix' => 'sub/',
-                    'MaxKeys' => 1,
-                ]
-            )
-            ->willReturn($command = $this->createMock(CommandInterface::class));
-        $client
-            ->expects($this->once())
-            ->method('execute')
-            ->with($command)
-            ->willReturn(['Contents' => [['simulate one file in the list']]]);
-
-        $this->assertTrue($bucket->has(new Path('/sub')));
+                $this->assertSame($exist, $bucket->has(new Path('/sub/composer.json')));
+            });
     }
 }

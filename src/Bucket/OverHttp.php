@@ -110,25 +110,6 @@ final class OverHttp implements Bucket
 
     public function has(PathInterface $path): bool
     {
-        if ($this->client->doesObjectExist($this->bucket, ltrim((string) $path, '/'))) {
-            return true;
-        }
-
-        $command = $this->client->getCommand(
-            'listObjects',
-            [
-                'Bucket' => $this->bucket,
-                'Prefix' => trim((string) $path, '/').'/',
-                'MaxKeys' => 1,
-            ]
-        );
-
-        try {
-            $result = $this->client->execute($command);
-
-            return \array_key_exists(0, $result['Contents'] ?? []);
-        } catch (S3Exception $e) {
-            return false;
-        }
+        return $this->client->doesObjectExist($this->bucket, ltrim((string) $path, '/'));
     }
 }
