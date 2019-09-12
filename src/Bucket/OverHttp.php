@@ -8,11 +8,13 @@ use Innmind\S3\{
     Region,
     Exception\UnableToAccessPath,
     Exception\FailedToUploadContent,
+    Exception\LogicException,
 };
 use Innmind\Url\{
     UrlInterface,
     PathInterface,
     Authority\NullUserInformation,
+    Path,
     NullPath,
     NullQuery,
 };
@@ -51,6 +53,15 @@ final class OverHttp implements Bucket
     {
         $options = [];
         \parse_str((string) $url->query(), $options);
+        $parts = Str::of((string) $url->path())
+            ->split('/')
+            ->filter(static function(Str $part): bool {
+                return !$part->empty();
+            });
+
+        if ($parts->empty()) {
+            throw new LogicException('Missing bucket name in the url path');
+        }
 
         return new self(
             new S3Client([
@@ -67,7 +78,8 @@ final class OverHttp implements Bucket
                     ->withPath(new NullPath)
                     ->withQuery(new NullQuery),
             ]),
-            new Name((string) Str::of((string) $url->path())->leftTrim('/'))
+            new Name((string) $parts->first()),
+            new Path((string) $parts->drop(1)->join('/')->prepend('/'))
         );
     }
 

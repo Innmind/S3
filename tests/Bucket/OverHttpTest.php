@@ -9,6 +9,7 @@ use Innmind\S3\{
     Bucket,
     Exception\UnableToAccessPath,
     Exception\FailedToUploadContent,
+    Exception\LogicException,
 };
 use Innmind\Url\{
     Url,
@@ -50,6 +51,18 @@ class OverHttpTest extends TestCase
             OverHttp::class,
             OverHttp::locatedAt(Url::fromString('https://key:secret@s3.region-name.scw.cloud/bucket-name?region=region-name'))
         );
+        $this->assertInstanceOf(
+            OverHttp::class,
+            OverHttp::locatedAt(Url::fromString('https://key:secret@s3.region-name.scw.cloud/bucket-name/root-dir/?region=region-name'))
+        );
+    }
+
+    public function testThrowWhenNoBucketNameInPath()
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Missing bucket name in the url path');
+
+        OverHttp::locatedAt(Url::fromString('https://key:secret@s3.region-name.scw.cloud/?region=region-name'));
     }
 
     public function testGet()
