@@ -33,13 +33,18 @@ final class OverHttp implements Bucket
 {
     private $client;
     private $bucket;
+    private $rootDirectory;
 
-    public function __construct(S3ClientInterface $client, Name $bucket)
-    {
+    public function __construct(
+        S3ClientInterface $client,
+        Name $bucket,
+        PathInterface $rootDirectory = null
+    ) {
         // @todo : the http client should be injected instead of relying on the
         // aws client to automatically create a http client
         $this->client = $client;
         $this->bucket = (string) $bucket;
+        $this->rootDirectory = Str::of((string) ($rootDirectory ?? new NullPath))->trim('/');
     }
 
     public static function locatedAt(UrlInterface $url): self
@@ -118,6 +123,11 @@ final class OverHttp implements Bucket
 
     private function keyFor(PathInterface $path): string
     {
-        return (string) Str::of((string) $path)->leftTrim('/');
+        $path = Str::of((string) $path)->leftTrim('/');
+
+        return (string) $this
+            ->rootDirectory
+            ->append("/$path")
+            ->leftTrim('/');
     }
 }
