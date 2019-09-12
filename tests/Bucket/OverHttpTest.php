@@ -44,7 +44,7 @@ class OverHttpTest extends TestCase
         );
     }
 
-    public function testLoacatedAt()
+    public function testLocatedAt()
     {
         $this->assertInstanceOf(
             OverHttp::class,
