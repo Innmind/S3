@@ -83,6 +83,8 @@ final class Adapter implements AdapterInterface
 
     /**
      * {@inheritdoc}
+     * This method always return an empty map as the bucket interface doesn't
+     * allow to list files
      */
     public function all(): MapInterface
     {
