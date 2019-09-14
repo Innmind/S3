@@ -7,4 +7,4 @@ jobs:
             - uses: actions/checkout@master
             -
                 name: PHPEnv
-                run: 'ls -l /usr/bin | grep php'
+                run: 'ls -l /etc/alternatives | grep php'
