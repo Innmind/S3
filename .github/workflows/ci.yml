@@ -7,4 +7,4 @@ jobs:
             - uses: actions/checkout@master
             -
                 name: PHPEnv
-                run: 'php -v'
+                run: 'whereis php'
