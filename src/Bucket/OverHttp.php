@@ -32,7 +32,7 @@ final class OverHttp implements Bucket
 {
     private S3ClientInterface $client;
     private string $bucket;
-    private Str $rootDirectory;
+    private Path $rootDirectory;
 
     public function __construct(
         S3ClientInterface $client,
@@ -49,7 +49,7 @@ final class OverHttp implements Bucket
         // aws client to automatically create a http client
         $this->client = $client;
         $this->bucket = $bucket->toString();
-        $this->rootDirectory = Str::of($rootDirectory->toString())->trim('/');
+        $this->rootDirectory = $rootDirectory;
     }
 
     public static function locatedAt(Url $url): self
@@ -150,13 +150,12 @@ final class OverHttp implements Bucket
             throw new LogicException("Path to a file must be relative, got '{$path->toString()}'");
         }
 
-        $path = Str::of($path->toString())->leftTrim('/');
-
-        return $this
+        $path = $this
             ->rootDirectory
-            ->append("/{$path->toString()}")
-            ->leftTrim('/')
+            ->resolve($path)
             ->toString();
+
+        return Str::of($path)->leftTrim('/')->toString();
     }
 
     private function containsDirectory(Path $directory): bool
