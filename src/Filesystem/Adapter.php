@@ -75,12 +75,10 @@ final class Adapter implements AdapterInterface
 
     /**
      * {@inheritdoc}
-     * This method always return an empty map as the bucket interface doesn't
-     * allow to list files
      */
     public function all(): Set
     {
-        return Set::of(File::class);
+        return $this->children(Path::none());
     }
 
     private function upload(Path $root, File $file): void
@@ -127,16 +125,18 @@ final class Adapter implements AdapterInterface
             ->mapTo(
                 File::class,
                 function(Path $child) use ($folder): File {
+                    $path = $folder->equals(Path::none()) ? $child : $folder->resolve($child);
+
                     if ($child->directory()) {
                         return new Directory\Directory(
                             new Name(Str::of($child->toString())->dropEnd(1)->toString()), // drop trailing '/'
-                            $this->children($folder->resolve($child)),
+                            $this->children($path),
                         );
                     }
 
                     return File\File::named(
                         $child->toString(),
-                        $this->bucket->get($folder->resolve($child)),
+                        $this->bucket->get($path),
                     );
                 },
             );

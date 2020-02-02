@@ -234,12 +234,27 @@ class AdapterTest extends TestCase
 
     public function testFilesListOfFilesystemAlwaysEmpty()
     {
-        $filesystem = new Adapter($this->createMock(Bucket::class));
+        $filesystem = new Adapter(
+            $bucket = $this->createMock(Bucket::class),
+        );
+        $bucket
+            ->expects($this->at(0))
+            ->method('list')
+            ->with(Path::none())
+            ->willReturn(Set::of(Path::class, Path::of('foo'), Path::of('bar')));
+        $bucket
+            ->expects($this->at(1))
+            ->method('get')
+            ->with(Path::of('foo'));
+        $bucket
+            ->expects($this->at(2))
+            ->method('get')
+            ->with(Path::of('bar'));
 
         $files = $filesystem->all();
 
         $this->assertInstanceOf(Set::class, $files);
         $this->assertSame(File::class, $files->type());
-        $this->assertCount(0, $files);
+        $this->assertCount(2, $files);
     }
 }
