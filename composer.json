@@ -15,7 +15,7 @@
         "issues": "http://github.com/Innmind/S3/issues"
     },
     "require": {
-        "php": "~7.2",
+        "php": "~7.4",
         "aws/aws-sdk-php": "^3.110",
         "innmind/url": "^2.0",
         "innmind/stream": "^1.5",

@@ -33,9 +33,9 @@ use Aws\S3\{
 
 final class OverHttp implements Bucket
 {
-    private $client;
-    private $bucket;
-    private $rootDirectory;
+    private S3ClientInterface $client;
+    private string $bucket;
+    private Str $rootDirectory;
 
     public function __construct(
         S3ClientInterface $client,

@@ -22,7 +22,7 @@ use Innmind\Immutable\{
 
 final class Adapter implements AdapterInterface
 {
-    private $bucket;
+    private Bucket $bucket;
 
     public function __construct(Bucket $bucket)
     {
