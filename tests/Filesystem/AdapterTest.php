@@ -146,32 +146,10 @@ class AdapterTest extends TestCase
         );
         $bucket
             ->expects($this->once())
-            ->method('contains')
-            ->with(Path::of('foo.pdf'))
-            ->willReturn(true);
-        $bucket
-            ->expects($this->once())
             ->method('delete')
             ->with(Path::of('foo.pdf'));
 
         $this->assertNull($filesystem->remove(new Name('foo.pdf')));
-    }
-
-    public function testThrowWhenRemovingUnknownFile()
-    {
-        $filesystem = new Adapter(
-            $bucket = $this->createMock(Bucket::class)
-        );
-        $bucket
-            ->expects($this->once())
-            ->method('contains')
-            ->with(Path::of('foo.pdf'))
-            ->willReturn(false);
-
-        $this->expectException(FileNotFound::class);
-        $this->expectExceptionMessage('foo.pdf');
-
-        $filesystem->remove(new Name('foo.pdf'));
     }
 
     public function testFilesListOfFilesystemAlwaysEmpty()

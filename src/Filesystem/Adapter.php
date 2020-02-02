@@ -70,10 +70,6 @@ final class Adapter implements AdapterInterface
      */
     public function remove(Name $file): void
     {
-        if (!$this->contains($file)) {
-            throw new FileNotFound($file->toString());
-        }
-
         $this->bucket->delete(Path::of($file->toString()));
     }
 
