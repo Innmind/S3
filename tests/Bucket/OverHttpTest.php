@@ -77,6 +77,19 @@ class OverHttpTest extends TestCase
         OverHttp::locatedAt(Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name/root-dir?region=region-name'));
     }
 
+    public function testPreventFromGettingADirectory()
+    {
+        $bucket = new OverHttp(
+            $this->createMock(S3ClientInterface::class),
+            new Name('bucket-name'),
+        );
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage("A directory can't be retrieved, got 'foo/'");
+
+        $bucket->get(Path::of('foo/'));
+    }
+
     public function testGet()
     {
         $this

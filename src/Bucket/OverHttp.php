@@ -96,6 +96,10 @@ final class OverHttp implements Bucket
 
     public function get(Path $path): Readable
     {
+        if ($path->directory()) {
+            throw new LogicException("A directory can't be retrieved, got '{$path->toString()}'");
+        }
+
         $command = $this->client->getCommand('GetObject', [
             'Bucket' => $this->bucket,
             'Key' => $this->keyFor($path),
