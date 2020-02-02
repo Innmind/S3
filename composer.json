@@ -15,13 +15,14 @@
         "issues": "http://github.com/Innmind/S3/issues"
     },
     "require": {
-        "php": "~7.2",
+        "php": "~7.4",
         "aws/aws-sdk-php": "^3.110",
-        "innmind/url": "^2.0",
-        "innmind/stream": "^1.5",
-        "innmind/immutable": "^2.15",
-        "innmind/http": "^3.10",
-        "innmind/filesystem": "^3.3"
+        "innmind/url": "~3.0",
+        "innmind/stream": "~2.0",
+        "innmind/immutable": "~3.3",
+        "innmind/http": "~4.1",
+        "innmind/filesystem": "~4.0",
+        "innmind/http-transport": "^5.0"
     },
     "autoload": {
         "psr-4": {
@@ -35,6 +36,7 @@
     },
     "require-dev": {
         "phpunit/phpunit": "~8.0",
-        "giorgiosironi/eris": "^0.11.0"
+        "giorgiosironi/eris": "^0.11.0",
+        "vimeo/psalm": "^3.8"
     }
 }
