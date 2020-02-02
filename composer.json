@@ -20,8 +20,9 @@
         "innmind/url": "~3.0",
         "innmind/stream": "~2.0",
         "innmind/immutable": "~3.3",
-        "innmind/http": "~4.0",
-        "innmind/filesystem": "~4.0"
+        "innmind/http": "~4.1",
+        "innmind/filesystem": "~4.0",
+        "innmind/http-transport": "^5.0"
     },
     "autoload": {
         "psr-4": {

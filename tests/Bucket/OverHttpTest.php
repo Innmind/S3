@@ -16,6 +16,7 @@ use Innmind\Url\{
     Path,
 };
 use Innmind\Stream\Readable;
+use Innmind\HttpTransport\Transport;
 use Innmind\Immutable\Set;
 use function Innmind\Immutable\unwrap;
 use Aws\{
@@ -53,11 +54,17 @@ class OverHttpTest extends TestCase
     {
         $this->assertInstanceOf(
             OverHttp::class,
-            OverHttp::locatedAt(Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name?region=region-name'))
+            OverHttp::locatedAt(
+                $this->createMock(Transport::class),
+                Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name?region=region-name'),
+            ),
         );
         $this->assertInstanceOf(
             OverHttp::class,
-            OverHttp::locatedAt(Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name/root-dir/?region=region-name'))
+            OverHttp::locatedAt(
+                $this->createMock(Transport::class),
+                Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name/root-dir/?region=region-name'),
+            ),
         );
     }
 
@@ -66,7 +73,10 @@ class OverHttpTest extends TestCase
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Missing bucket name in the url path');
 
-        OverHttp::locatedAt(Url::of('https://key:secret@s3.region-name.scw.cloud/?region=region-name'));
+        OverHttp::locatedAt(
+            $this->createMock(Transport::class),
+            Url::of('https://key:secret@s3.region-name.scw.cloud/?region=region-name'),
+        );
     }
 
     public function testThrowWhenRootDirectoryDoesntRepresentADirectory()
@@ -74,7 +84,10 @@ class OverHttpTest extends TestCase
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage("Root directory '/root-dir' must represent a directory");
 
-        OverHttp::locatedAt(Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name/root-dir?region=region-name'));
+        OverHttp::locatedAt(
+            $this->createMock(Transport::class),
+            Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name/root-dir?region=region-name'),
+        );
     }
 
     public function testPreventFromGettingADirectory()

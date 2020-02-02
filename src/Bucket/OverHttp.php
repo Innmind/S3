@@ -18,6 +18,14 @@ use Innmind\Stream\Readable;
 use Innmind\Http\{
     Bridge\Psr7\Stream as PsrToStream,
     Adapter\Psr7\Stream as StreamToPsr,
+    Translator\Request\Psr7Translator,
+    Translator\Response\ToPsr7,
+    Factory\Header\HeaderFactory,
+};
+use Innmind\HttpTransport\{
+    Transport,
+    Exception\ConnectionFailed,
+    Exception\RuntimeException,
 };
 use Innmind\Immutable\{
     Str,
@@ -30,8 +38,12 @@ use Aws\S3\{
     Exception\S3Exception,
     Exception\S3MultipartUploadException,
 };
-use Psr\Http\Message\StreamInterface;
 use Aws\ResultPaginator;
+use GuzzleHttp\Promise;
+use Psr\Http\Message\{
+    RequestInterface,
+    StreamInterface,
+};
 
 final class OverHttp implements Bucket
 {
@@ -57,7 +69,7 @@ final class OverHttp implements Bucket
         $this->rootDirectory = $rootDirectory;
     }
 
-    public static function locatedAt(Url $url): self
+    public static function locatedAt(Transport $fulfill, Url $url): self
     {
         /** @var array{version?: string, region: string} $options */
         $options = [];
@@ -92,6 +104,7 @@ final class OverHttp implements Bucket
                     ->withoutPath()
                     ->withoutQuery()
                     ->toString(),
+                'http_handler' => self::httpHandler($fulfill),
             ]),
             new Name($parts->first()->toString()),
             $rootDirectory->empty() ? Path::none() : Path::of($rootDirectory->toString()),
@@ -246,5 +259,44 @@ final class OverHttp implements Bucket
                 ->substring(Str::of($prefix)->length())
                 ->toString(),
         );
+    }
+
+    /**
+     * We override the default http handler of the s3 client in order to
+     * incorporate this library nicely with the rest of the innmind ecosystem
+     */
+    private static function httpHandler(Transport $fulfill): callable
+    {
+        $mapRequest = new Psr7Translator(new HeaderFactory);
+        $mapResponse = new ToPsr7;
+
+        return static function(
+            RequestInterface $request,
+            array $options = []
+        ) use (
+            $fulfill,
+            $mapRequest,
+            $mapResponse
+        ): Promise\PromiseInterface {
+            try {
+                $response = $fulfill($mapRequest($request));
+            } catch (ConnectionFailed $e) {
+                return new Promise\RejectedPromise([
+                    'exception' => $e,
+                    'connection_error' => true,
+                    'response' => null,
+                ]);
+            }
+
+            if ($response->statusCode()->isSuccessful()) {
+                return new Promise\FulfilledPromise($mapResponse($response));
+            }
+
+            return new Promise\RejectedPromise([
+                'exception' => new RuntimeException,
+                'connection_error' => false,
+                'response' => $mapResponse($response),
+            ]);
+        };
     }
 }
