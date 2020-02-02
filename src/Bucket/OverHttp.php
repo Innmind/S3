@@ -168,6 +168,13 @@ final class OverHttp implements Bucket
             (function(string $prefix, ResultPaginator $results): \Generator {
                 foreach ($results as $result) {
                     foreach ($result['Contents'] ?? [] as $file) {
+                        if ($file['Key'] === $prefix) {
+                            // when the folder exist it is listed as the first element
+                            // of the files and we dont wan't the folder itself in the
+                            // list of it's children
+                            continue;
+                        }
+
                         yield $this->removePrefix($prefix, $file['Key']);
                     }
 

@@ -493,7 +493,10 @@ class OverHttpTest extends TestCase
             ->method('execute')
             ->with($command)
             ->willReturn(new Result([
-                'Contents' => [['Key' => 'root/foo/some-file']],
+                'Contents' => [
+                    ['Key' => 'root/foo/'],
+                    ['Key' => 'root/foo/some-file'],
+                ],
                 'CommonPrefixes' => [['Prefix' => 'root/foo/sub-dir/']],
             ]));
 
@@ -559,7 +562,10 @@ class OverHttpTest extends TestCase
             ->method('execute')
             ->with($command)
             ->willReturn(new Result([
-                'Contents' => [['Key' => 'root/some-file']],
+                'Contents' => [
+                    ['Key' => 'root/'],
+                    ['Key' => 'root/some-file'],
+                ],
                 'CommonPrefixes' => [['Prefix' => 'root/sub-dir/']],
             ]));
 
