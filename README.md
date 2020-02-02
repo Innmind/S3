@@ -1,10 +1,8 @@
 # S3
 
-| `develop` |
-|-----------|
-| [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Innmind/S3/badges/quality-score.png?b=develop)](https://scrutinizer-ci.com/g/Innmind/S3/?branch=develop) |
-| [![Code Coverage](https://scrutinizer-ci.com/g/Innmind/S3/badges/coverage.png?b=develop)](https://scrutinizer-ci.com/g/Innmind/S3/?branch=develop) |
-| [![Build Status](https://scrutinizer-ci.com/g/Innmind/S3/badges/build.png?b=develop)](https://scrutinizer-ci.com/g/Innmind/S3/build-status/develop) |
+[![codecov](https://codecov.io/gh/Innmind/S3/branch/develop/graph/badge.svg)](https://codecov.io/gh/Innmind/S3)
+[![Build Status](https://github.com/Innmind/S3/workflows/CI/badge.svg)](https://github.com/Innmind/S3/actions?query=workflow%3ACI)
+[![Type Coverage](https://shepherd.dev/github/Innmind/S3/coverage.svg)](https://shepherd.dev/github/Innmind/S3)
 
 Very simple abstraction on top of the [`aws-sdk`](https://packagist.org/packages/aws/aws-sdk-php) to work with any S3 bucket.
 
