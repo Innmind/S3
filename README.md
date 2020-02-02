@@ -20,24 +20,26 @@ use Innmind\Url\{
     Url,
     Path,
 };
+use Innmind\OperatingSystem\Factory;
+
+$os = Factory::build();
 
 $bucket = Bucket\OverHttp::locatedAt(
-    Url::fromString('https://acces_key:acces_secret@s3.region-name.scw.cloud/bucket-name?region=region-name')
+    $os->remote()->http(),
+    Url::of('https://acces_key:acces_secret@s3.region-name.scw.cloud/bucket-name/?region=region-name'),
 );
 
-$file = $bucket->get(new Path('/some-file.txt'));
+$file = $bucket->get(Path::of('some-file.txt'));
 // $file is an instance of Innmind\Stream\Readable
-$bucket->upload(new Path('/some-other-name.txt'), $file); // essentially this will copy the file
+$bucket->upload(Path::of('some-other-name.txt'), $file); // essentially this will copy the file
 ```
 
 To simplify some usage you can use the filesystem adapter on top of the bucket interface. Here's an example to upload a directory to a bucket:
 
 ```php
 use Innmind\S3\Filesystem;
-use Innmind\OperatingSystem\Factory;
 
-$os = Factory::build();
-$data = $os->filsystem()->mount(new Path('/var/data'));
+$data = $os->filsystem()->mount(Path::of('/var/data'));
 $s3 = new Filesystem\Adapter($bucket);
 $s3->add($data->get('images'));
 ```
