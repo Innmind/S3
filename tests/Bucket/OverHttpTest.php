@@ -16,11 +16,15 @@ use Innmind\Url\{
     Path,
 };
 use Innmind\Stream\Readable;
+use Innmind\Immutable\Set;
+use function Innmind\Immutable\unwrap;
 use Aws\{
     S3\S3ClientInterface,
     S3\Exception\S3Exception,
     S3\Exception\S3MultipartUploadException,
     CommandInterface,
+    ResultPaginator,
+    Result,
 };
 use Psr\Http\Message\StreamInterface;
 use function GuzzleHttp\Psr7\stream_for;
@@ -422,5 +426,150 @@ class OverHttpTest extends TestCase
         $this->expectExceptionMessage("Path to a file must be relative, got '/sub/composer.json'");
 
         $bucket->get(Path::of('/sub/composer.json'));
+    }
+
+    public function testThrowWhenTryingToLostOnANonDirectory()
+    {
+        $bucket = new OverHttp(
+            $this->createMock(S3ClientInterface::class),
+            new Name('bucket-name'),
+        );
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage("Only a directory can be listed, got 'foo'");
+
+        $bucket->list(Path::of('foo'));
+    }
+
+    public function testListFilesInADirectory()
+    {
+        $bucket = new OverHttp(
+            $client = $this->createMock(S3ClientInterface::class),
+            new Name('bucket-name'),
+            Path::of('/root/'),
+        );
+        $client
+            ->expects($this->at(0))
+            ->method('getPaginator')
+            ->with(
+                'listObjects',
+                [
+                    'Bucket' => 'bucket-name',
+                    'Prefix' => 'root/foo/',
+                    'Delimiter' => '/',
+                ],
+            )
+            ->willReturn(new ResultPaginator(
+                $client,
+                'listObjects',
+                [
+                    'Bucket' => 'bucket-name',
+                    'Prefix' => 'root/foo/',
+                    'Delimiter' => '/',
+                ],
+                [
+                    // defaults coming from the sdk implementation
+                    'input_token' => null,
+                    'output_token' => null,
+                    'limit_key' => null,
+                    'result_key' => null,
+                    'more_results' => null,
+                ],
+            ));
+        $client
+            ->expects($this->at(1))
+            ->method('getCommand')
+            ->with(
+                'listObjects',
+                [
+                    'Bucket' => 'bucket-name',
+                    'Prefix' => 'root/foo/',
+                    'Delimiter' => '/',
+                ],
+            )
+            ->willReturn($command = $this->createMock(CommandInterface::class));
+        $client
+            ->expects($this->at(2))
+            ->method('execute')
+            ->with($command)
+            ->willReturn(new Result([
+                'Contents' => [['Key' => 'root/foo/some-file']],
+                'CommonPrefixes' => [['Prefix' => 'root/foo/sub-dir/']],
+            ]));
+
+        $paths = $bucket->list(Path::of('foo/'));
+
+        $this->assertInstanceOf(Set::class, $paths);
+        $this->assertSame(Path::class, $paths->type());
+        $this->assertEquals(
+            [Path::of('some-file'), Path::of('sub-dir/')],
+            unwrap($paths),
+        );
+    }
+
+    public function testListFilesAtBucketRoot()
+    {
+        $bucket = new OverHttp(
+            $client = $this->createMock(S3ClientInterface::class),
+            new Name('bucket-name'),
+            Path::of('/root/'),
+        );
+        $client
+            ->expects($this->at(0))
+            ->method('getPaginator')
+            ->with(
+                'listObjects',
+                [
+                    'Bucket' => 'bucket-name',
+                    'Prefix' => 'root/',
+                    'Delimiter' => '/',
+                ],
+            )
+            ->willReturn(new ResultPaginator(
+                $client,
+                'listObjects',
+                [
+                    'Bucket' => 'bucket-name',
+                    'Prefix' => 'root/',
+                    'Delimiter' => '/',
+                ],
+                [
+                    // defaults coming from the sdk implementation
+                    'input_token' => null,
+                    'output_token' => null,
+                    'limit_key' => null,
+                    'result_key' => null,
+                    'more_results' => null,
+                ],
+            ));
+        $client
+            ->expects($this->at(1))
+            ->method('getCommand')
+            ->with(
+                'listObjects',
+                [
+                    'Bucket' => 'bucket-name',
+                    'Prefix' => 'root/',
+                    'Delimiter' => '/',
+                ],
+            )
+            ->willReturn($command = $this->createMock(CommandInterface::class));
+        $client
+            ->expects($this->at(2))
+            ->method('execute')
+            ->with($command)
+            ->willReturn(new Result([
+                'Contents' => [['Key' => 'root/some-file']],
+                'CommonPrefixes' => [['Prefix' => 'root/sub-dir/']],
+            ]));
+
+        $paths = $bucket->list(Path::none());
+
+        $this->assertInstanceOf(Set::class, $paths);
+        $this->assertSame(Path::class, $paths->type());
+        $this->assertEquals(
+            [Path::of('some-file'), Path::of('sub-dir/')],
+            unwrap($paths),
+        );
     }
 }

@@ -19,7 +19,10 @@ use Innmind\Http\{
     Bridge\Psr7\Stream as PsrToStream,
     Adapter\Psr7\Stream as StreamToPsr,
 };
-use Innmind\Immutable\Str;
+use Innmind\Immutable\{
+    Str,
+    Set,
+};
 use function Innmind\Immutable\join;
 use Aws\S3\{
     S3ClientInterface,
@@ -27,6 +30,7 @@ use Aws\S3\{
     Exception\S3Exception,
     Exception\S3MultipartUploadException,
 };
+use Aws\ResultPaginator;
 
 final class OverHttp implements Bucket
 {
@@ -144,8 +148,43 @@ final class OverHttp implements Bucket
         );
     }
 
+    public function list(Path $path): Set
+    {
+        if (!$path->directory()) {
+            throw new LogicException("Only a directory can be listed, got '{$path->toString()}'");
+        }
+
+        $paginator = $this->client->getPaginator(
+            'listObjects',
+            [
+                'Bucket' => $this->bucket,
+                'Prefix' => $prefix = $this->keyFor($path),
+                'Delimiter' => '/',
+            ],
+        );
+
+        return Set::defer(
+            Path::class,
+            (function(string $prefix, ResultPaginator $results): \Generator {
+                foreach ($results as $result) {
+                    foreach ($result['Contents'] ?? [] as $file) {
+                        yield $this->removePrefix($prefix, $file['Key']);
+                    }
+
+                    foreach ($result['CommonPrefixes'] ?? [] as $directory) {
+                        yield $this->removePrefix($prefix, $directory['Prefix']);
+                    }
+                }
+            })($prefix, $paginator),
+        );
+    }
+
     private function keyFor(Path $path): string
     {
+        if ($path->equals(Path::none())) {
+            return Str::of($this->rootDirectory->toString())->leftTrim('/')->toString();
+        }
+
         if ($path->absolute()) {
             throw new LogicException("Path to a file must be relative, got '{$path->toString()}'");
         }
@@ -172,5 +211,14 @@ final class OverHttp implements Bucket
         $result = $this->client->execute($command);
 
         return \count($result['Contents'] ?? []) > 0;
+    }
+
+    private function removePrefix(string $prefix, string $path): Path
+    {
+        return Path::of(
+            Str::of($path)
+                ->substring(Str::of($prefix)->length())
+                ->toString(),
+        );
     }
 }
