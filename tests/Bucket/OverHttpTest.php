@@ -298,6 +298,87 @@ class OverHttpTest extends TestCase
             });
     }
 
+    public function testDirectoryExistsWhenTheresAtLeastOneElementFound()
+    {
+        $bucket = new OverHttp(
+            $client = $this->createMock(S3ClientInterface::class),
+            new Name('bucket-name')
+        );
+        $client
+            ->expects($this->at(0))
+            ->method('getCommand')
+            ->with(
+                'listObjects',
+                [
+                    'Bucket' => 'bucket-name',
+                    'Prefix' => 'sub/folder/',
+                    'MaxKeys' => 1,
+                ],
+            )
+            ->willReturn($command = $this->createMock(CommandInterface::class));
+        $client
+            ->expects($this->at(1))
+            ->method('execute')
+            ->with($command)
+            ->willReturn(['Contents' => [['Key' => 'some-file']]]);
+
+        $this->assertTrue($bucket->contains(Path::of('/sub/folder/')));
+    }
+
+    public function testDirectoryDoesntExistsWhenNoElementFound()
+    {
+        $bucket = new OverHttp(
+            $client = $this->createMock(S3ClientInterface::class),
+            new Name('bucket-name')
+        );
+        $client
+            ->expects($this->at(0))
+            ->method('getCommand')
+            ->with(
+                'listObjects',
+                [
+                    'Bucket' => 'bucket-name',
+                    'Prefix' => 'sub/folder/',
+                    'MaxKeys' => 1,
+                ],
+            )
+            ->willReturn($command = $this->createMock(CommandInterface::class));
+        $client
+            ->expects($this->at(1))
+            ->method('execute')
+            ->with($command)
+            ->willReturn(['Contents' => []]);
+
+        $this->assertFalse($bucket->contains(Path::of('/sub/folder/')));
+    }
+
+    public function testDirectoryDoesntExistsWhenNoContentReturned()
+    {
+        $bucket = new OverHttp(
+            $client = $this->createMock(S3ClientInterface::class),
+            new Name('bucket-name')
+        );
+        $client
+            ->expects($this->at(0))
+            ->method('getCommand')
+            ->with(
+                'listObjects',
+                [
+                    'Bucket' => 'bucket-name',
+                    'Prefix' => 'sub/folder/',
+                    'MaxKeys' => 1,
+                ],
+            )
+            ->willReturn($command = $this->createMock(CommandInterface::class));
+        $client
+            ->expects($this->at(1))
+            ->method('execute')
+            ->with($command)
+            ->willReturn([]);
+
+        $this->assertFalse($bucket->contains(Path::of('/sub/folder/')));
+    }
+
     public function testFileExistsLocatedInSpecificRootDirectory()
     {
         $this

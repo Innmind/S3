@@ -131,6 +131,10 @@ final class OverHttp implements Bucket
 
     public function contains(Path $path): bool
     {
+        if ($path->directory()) {
+            return $this->containsDirectory($path);
+        }
+
         return $this->client->doesObjectExist(
             $this->bucket,
             $this->keyFor($path),
@@ -146,5 +150,21 @@ final class OverHttp implements Bucket
             ->append("/{$path->toString()}")
             ->leftTrim('/')
             ->toString();
+    }
+
+    private function containsDirectory(Path $directory): bool
+    {
+        $command = $this->client->getCommand(
+            'listObjects',
+            [
+                'Bucket' => $this->bucket,
+                'Prefix' => $this->keyFor($directory),
+                'MaxKeys' => 1, // no need to list all objects to know if directory exist
+            ],
+        );
+
+        $result = $this->client->execute($command);
+
+        return \count($result['Contents'] ?? []) > 0;
     }
 }
