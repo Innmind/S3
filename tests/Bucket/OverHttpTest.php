@@ -65,6 +65,14 @@ class OverHttpTest extends TestCase
         OverHttp::locatedAt(Url::of('https://key:secret@s3.region-name.scw.cloud/?region=region-name'));
     }
 
+    public function testThrowWhenRootDirectoryDoesntRepresentADirectory()
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage("Root directory '/root-dir' must represent a directory");
+
+        OverHttp::locatedAt(Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name/root-dir?region=region-name'));
+    }
+
     public function testGet()
     {
         $this
@@ -103,7 +111,7 @@ class OverHttpTest extends TestCase
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
                     new Name('bucket-name'),
-                    Path::of('/root')
+                    Path::of('/root/')
                 );
                 $client
                     ->expects($this->once())
@@ -187,7 +195,7 @@ class OverHttpTest extends TestCase
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
                     new Name('bucket-name'),
-                    Path::of('/root')
+                    Path::of('/root/')
                 );
                 $client
                     ->expects($this->once())
@@ -258,7 +266,7 @@ class OverHttpTest extends TestCase
         $bucket = new OverHttp(
             $client = $this->createMock(S3ClientInterface::class),
             new Name('bucket-name'),
-            Path::of('/root')
+            Path::of('/root/')
         );
         $client
             ->expects($this->once())
@@ -387,7 +395,7 @@ class OverHttpTest extends TestCase
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
                     new Name('bucket-name'),
-                    Path::of('/root')
+                    Path::of('/root/')
                 );
                 $client
                     ->expects($this->once())

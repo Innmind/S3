@@ -39,18 +39,25 @@ final class OverHttp implements Bucket
         Name $bucket,
         Path $rootDirectory = null
     ) {
+        $rootDirectory ??= Path::none();
+
+        if (!$rootDirectory->directory()) {
+            throw new LogicException("Root directory '{$rootDirectory->toString()}' must represent a directory");
+        }
+
         // @todo : the http client should be injected instead of relying on the
         // aws client to automatically create a http client
         $this->client = $client;
         $this->bucket = $bucket->toString();
-        $this->rootDirectory = Str::of(($rootDirectory ?? Path::none())->toString())->trim('/');
+        $this->rootDirectory = Str::of($rootDirectory->toString())->trim('/');
     }
 
     public static function locatedAt(Url $url): self
     {
         $options = [];
         \parse_str($url->query()->toString(), $options);
-        $parts = Str::of($url->path()->toString())
+        $path = Str::of($url->path()->toString());
+        $parts = $path
             ->split('/')
             ->filter(static function(Str $part): bool {
                 return !$part->empty();
@@ -59,6 +66,8 @@ final class OverHttp implements Bucket
         if ($parts->empty()) {
             throw new LogicException('Missing bucket name in the url path');
         }
+
+        $rootDirectory = $path->substring($parts->first()->length() + 1); // the 1 is for the leading /
 
         return new self(
             new S3Client([
@@ -77,13 +86,7 @@ final class OverHttp implements Bucket
                     ->toString(),
             ]),
             new Name($parts->first()->toString()),
-            Path::of(join(
-                '/',
-                $parts->drop(1)->mapTo(
-                    'string',
-                    static fn(Str $part): string => $part->toString(),
-                ),
-            )->prepend('/')->toString()),
+            $rootDirectory->empty() ? Path::none() : Path::of($rootDirectory->toString()),
         );
     }
 
