@@ -49,11 +49,11 @@ class OverHttpTest extends TestCase
     {
         $this->assertInstanceOf(
             OverHttp::class,
-            OverHttp::locatedAt(Url::fromString('https://key:secret@s3.region-name.scw.cloud/bucket-name?region=region-name'))
+            OverHttp::locatedAt(Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name?region=region-name'))
         );
         $this->assertInstanceOf(
             OverHttp::class,
-            OverHttp::locatedAt(Url::fromString('https://key:secret@s3.region-name.scw.cloud/bucket-name/root-dir/?region=region-name'))
+            OverHttp::locatedAt(Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name/root-dir/?region=region-name'))
         );
     }
 
@@ -62,7 +62,7 @@ class OverHttpTest extends TestCase
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Missing bucket name in the url path');
 
-        OverHttp::locatedAt(Url::fromString('https://key:secret@s3.region-name.scw.cloud/?region=region-name'));
+        OverHttp::locatedAt(Url::of('https://key:secret@s3.region-name.scw.cloud/?region=region-name'));
     }
 
     public function testGet()
@@ -88,10 +88,10 @@ class OverHttpTest extends TestCase
                     ->with($command)
                     ->willReturn(['Body' => stream_for($fileContent)]);
 
-                $content = $bucket->get(new Path('/File-1423132640.pdf'));
+                $content = $bucket->get(Path::of('/File-1423132640.pdf'));
 
                 $this->assertInstanceOf(Readable::class, $content);
-                $this->assertSame($fileContent, (string) $content);
+                $this->assertSame($fileContent, $content->toString());
             });
     }
 
@@ -103,7 +103,7 @@ class OverHttpTest extends TestCase
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
                     new Name('bucket-name'),
-                    new Path('/root')
+                    Path::of('/root')
                 );
                 $client
                     ->expects($this->once())
@@ -119,10 +119,10 @@ class OverHttpTest extends TestCase
                     ->with($command)
                     ->willReturn(['Body' => stream_for($fileContent)]);
 
-                $content = $bucket->get(new Path('/File-1423132640.pdf'));
+                $content = $bucket->get(Path::of('/File-1423132640.pdf'));
 
                 $this->assertInstanceOf(Readable::class, $content);
-                $this->assertSame($fileContent, (string) $content);
+                $this->assertSame($fileContent, $content->toString());
             });
     }
 
@@ -149,7 +149,7 @@ class OverHttpTest extends TestCase
         $this->expectException(UnableToAccessPath::class);
         $this->expectExceptionMessage('/File-1423132640.pdf');
 
-        $bucket->get(new Path('/File-1423132640.pdf'));
+        $bucket->get(Path::of('/File-1423132640.pdf'));
     }
 
     public function testUpload()
@@ -172,12 +172,9 @@ class OverHttpTest extends TestCase
                         })
                     );
 
-                $resource = fopen('php://temp', 'r+');
-                fwrite($resource, $fileContent);
-
                 $this->assertNull($bucket->upload(
-                    new Path('/sub/composer.json'),
-                    new Readable\Stream($resource)
+                    Path::of('/sub/composer.json'),
+                    Readable\Stream::ofContent($fileContent),
                 ));
             });
     }
@@ -190,7 +187,7 @@ class OverHttpTest extends TestCase
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
                     new Name('bucket-name'),
-                    new Path('/root')
+                    Path::of('/root')
                 );
                 $client
                     ->expects($this->once())
@@ -203,12 +200,9 @@ class OverHttpTest extends TestCase
                         })
                     );
 
-                $resource = fopen('php://temp', 'r+');
-                fwrite($resource, $fileContent);
-
                 $this->assertNull($bucket->upload(
-                    new Path('/sub/composer.json'),
-                    new Readable\Stream($resource)
+                    Path::of('/sub/composer.json'),
+                    Readable\Stream::ofContent($fileContent)
                 ));
             });
     }
@@ -227,15 +221,12 @@ class OverHttpTest extends TestCase
                     ->method('upload')
                     ->will($this->throwException($this->createMock(S3MultipartUploadException::class)));
 
-                $resource = fopen('php://temp', 'r+');
-                fwrite($resource, $fileContent);
-
                 $this->expectException(FailedToUploadContent::class);
                 $this->expectExceptionMessage('/sub/composer.json');
 
                 $bucket->upload(
-                    new Path('/sub/composer.json'),
-                    new Readable\Stream($resource)
+                    Path::of('/sub/composer.json'),
+                    Readable\Stream::ofContent($fileContent),
                 );
             });
     }
@@ -259,7 +250,7 @@ class OverHttpTest extends TestCase
             ->method('execute')
             ->with($command);
 
-        $this->assertNull($bucket->delete(new Path('/sub/composer.json')));
+        $this->assertNull($bucket->delete(Path::of('/sub/composer.json')));
     }
 
     public function testDeleteLocatedInSpecificRootDirectory()
@@ -267,7 +258,7 @@ class OverHttpTest extends TestCase
         $bucket = new OverHttp(
             $client = $this->createMock(S3ClientInterface::class),
             new Name('bucket-name'),
-            new Path('/root')
+            Path::of('/root')
         );
         $client
             ->expects($this->once())
@@ -282,7 +273,7 @@ class OverHttpTest extends TestCase
             ->method('execute')
             ->with($command);
 
-        $this->assertNull($bucket->delete(new Path('/sub/composer.json')));
+        $this->assertNull($bucket->delete(Path::of('/sub/composer.json')));
     }
 
     public function testFileExists()
@@ -303,7 +294,7 @@ class OverHttpTest extends TestCase
                     )
                     ->willReturn($exist);
 
-                $this->assertSame($exist, $bucket->has(new Path('/sub/composer.json')));
+                $this->assertSame($exist, $bucket->has(Path::of('/sub/composer.json')));
             });
     }
 
@@ -315,7 +306,7 @@ class OverHttpTest extends TestCase
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
                     new Name('bucket-name'),
-                    new Path('/root')
+                    Path::of('/root')
                 );
                 $client
                     ->expects($this->once())
@@ -326,7 +317,7 @@ class OverHttpTest extends TestCase
                     )
                     ->willReturn($exist);
 
-                $this->assertSame($exist, $bucket->has(new Path('/sub/composer.json')));
+                $this->assertSame($exist, $bucket->has(Path::of('/sub/composer.json')));
             });
     }
 }

@@ -11,12 +11,8 @@ use Innmind\S3\{
     Exception\LogicException,
 };
 use Innmind\Url\{
-    UrlInterface,
-    PathInterface,
-    Authority\NullUserInformation,
+    Url,
     Path,
-    NullPath,
-    NullQuery,
 };
 use Innmind\Stream\Readable;
 use Innmind\Http\{
@@ -24,6 +20,7 @@ use Innmind\Http\{
     Adapter\Psr7\Stream as StreamToPsr,
 };
 use Innmind\Immutable\Str;
+use function Innmind\Immutable\join;
 use Aws\S3\{
     S3ClientInterface,
     S3Client,
@@ -40,20 +37,20 @@ final class OverHttp implements Bucket
     public function __construct(
         S3ClientInterface $client,
         Name $bucket,
-        PathInterface $rootDirectory = null
+        Path $rootDirectory = null
     ) {
         // @todo : the http client should be injected instead of relying on the
         // aws client to automatically create a http client
         $this->client = $client;
         $this->bucket = $bucket->toString();
-        $this->rootDirectory = Str::of((string) ($rootDirectory ?? new NullPath))->trim('/');
+        $this->rootDirectory = Str::of(($rootDirectory ?? Path::none())->toString())->trim('/');
     }
 
-    public static function locatedAt(UrlInterface $url): self
+    public static function locatedAt(Url $url): self
     {
         $options = [];
-        \parse_str((string) $url->query(), $options);
-        $parts = Str::of((string) $url->path())
+        \parse_str($url->query()->toString(), $options);
+        $parts = Str::of($url->path()->toString())
             ->split('/')
             ->filter(static function(Str $part): bool {
                 return !$part->empty();
@@ -66,24 +63,31 @@ final class OverHttp implements Bucket
         return new self(
             new S3Client([
                 'credentials' => [
-                    'key' => (string) $url->authority()->userInformation()->user(),
-                    'secret' => (string) $url->authority()->userInformation()->password(),
+                    'key' => $url->authority()->userInformation()->user()->toString(),
+                    'secret' => $url->authority()->userInformation()->password()->toString(),
                 ],
                 'version' => $options['version'] ?? 'latest',
                 'region' => (new Region($options['region']))->toString(),
-                'endpoint' => (string) $url
+                'endpoint' => $url
                     ->withAuthority(
-                        $url->authority()->withUserInformation(new NullUserInformation)
+                        $url->authority()->withoutUserInformation(),
                     )
-                    ->withPath(new NullPath)
-                    ->withQuery(new NullQuery),
+                    ->withoutPath()
+                    ->withoutQuery()
+                    ->toString(),
             ]),
-            new Name((string) $parts->first()),
-            new Path((string) $parts->drop(1)->join('/')->prepend('/'))
+            new Name($parts->first()->toString()),
+            Path::of(join(
+                '/',
+                $parts->drop(1)->mapTo(
+                    'string',
+                    static fn(Str $part): string => $part->toString(),
+                ),
+            )->prepend('/')->toString()),
         );
     }
 
-    public function get(PathInterface $path): Readable
+    public function get(Path $path): Readable
     {
         $command = $this->client->getCommand('getObject', [
             'Bucket' => $this->bucket,
@@ -93,53 +97,54 @@ final class OverHttp implements Bucket
         try {
             $response = $this->client->execute($command);
         } catch (S3Exception $e) {
-            throw new UnableToAccessPath((string) $path, 0, $e);
+            throw new UnableToAccessPath($path->toString(), 0, $e);
         }
 
         return new PsrToStream($response['Body']);
     }
 
-    public function upload(PathInterface $path, Readable $content): void
+    public function upload(Path $path, Readable $content): void
     {
         try {
             $this->client->upload(
                 $this->bucket,
                 $this->keyFor($path),
-                new StreamToPsr($content)
+                new StreamToPsr($content),
             );
         } catch (S3MultipartUploadException $e) {
-            throw new FailedToUploadContent((string) $path, 0, $e);
+            throw new FailedToUploadContent($path->toString(), 0, $e);
         }
     }
 
-    public function delete(PathInterface $path): void
+    public function delete(Path $path): void
     {
         $command = $this->client->getCommand(
             'deleteObject',
             [
                 'Bucket' => $this->bucket,
                 'Key' => $this->keyFor($path),
-            ]
+            ],
         );
 
         $this->client->execute($command);
     }
 
-    public function has(PathInterface $path): bool
+    public function has(Path $path): bool
     {
         return $this->client->doesObjectExist(
             $this->bucket,
-            $this->keyFor($path)
+            $this->keyFor($path),
         );
     }
 
-    private function keyFor(PathInterface $path): string
+    private function keyFor(Path $path): string
     {
-        $path = Str::of((string) $path)->leftTrim('/');
+        $path = Str::of($path->toString())->leftTrim('/');
 
-        return (string) $this
+        return $this
             ->rootDirectory
-            ->append("/$path")
-            ->leftTrim('/');
+            ->append("/{$path->toString()}")
+            ->leftTrim('/')
+            ->toString();
     }
 }
