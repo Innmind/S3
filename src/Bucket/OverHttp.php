@@ -129,7 +129,7 @@ final class OverHttp implements Bucket
         $this->client->execute($command);
     }
 
-    public function has(Path $path): bool
+    public function contains(Path $path): bool
     {
         return $this->client->doesObjectExist(
             $this->bucket,

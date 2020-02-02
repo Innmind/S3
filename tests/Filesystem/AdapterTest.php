@@ -131,7 +131,7 @@ class AdapterTest extends TestCase
                 );
                 $bucket
                     ->expects($this->once())
-                    ->method('has')
+                    ->method('contains')
                     ->with(Path::of('/foo.pdf'))
                     ->willReturn($exist);
 
@@ -146,7 +146,7 @@ class AdapterTest extends TestCase
         );
         $bucket
             ->expects($this->once())
-            ->method('has')
+            ->method('contains')
             ->with(Path::of('/foo.pdf'))
             ->willReturn(true);
         $bucket
@@ -164,7 +164,7 @@ class AdapterTest extends TestCase
         );
         $bucket
             ->expects($this->once())
-            ->method('has')
+            ->method('contains')
             ->with(Path::of('/foo.pdf'))
             ->willReturn(false);
 

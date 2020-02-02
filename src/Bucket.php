@@ -18,5 +18,5 @@ interface Bucket
      */
     public function upload(Path $path, Readable $content): void;
     public function delete(Path $path): void;
-    public function has(Path $path): bool;
+    public function contains(Path $path): bool;
 }

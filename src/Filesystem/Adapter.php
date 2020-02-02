@@ -62,7 +62,7 @@ final class Adapter implements AdapterInterface
 
     public function contains(Name $file): bool
     {
-        return $this->bucket->has(Path::of("/{$file->toString()}"));
+        return $this->bucket->contains(Path::of("/{$file->toString()}"));
     }
 
     /**

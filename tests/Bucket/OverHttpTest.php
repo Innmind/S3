@@ -294,7 +294,7 @@ class OverHttpTest extends TestCase
                     )
                     ->willReturn($exist);
 
-                $this->assertSame($exist, $bucket->has(Path::of('/sub/composer.json')));
+                $this->assertSame($exist, $bucket->contains(Path::of('/sub/composer.json')));
             });
     }
 
@@ -317,7 +317,7 @@ class OverHttpTest extends TestCase
                     )
                     ->willReturn($exist);
 
-                $this->assertSame($exist, $bucket->has(Path::of('/sub/composer.json')));
+                $this->assertSame($exist, $bucket->contains(Path::of('/sub/composer.json')));
             });
     }
 }
