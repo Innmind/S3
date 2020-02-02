@@ -146,6 +146,10 @@ final class OverHttp implements Bucket
 
     private function keyFor(Path $path): string
     {
+        if ($path->absolute()) {
+            throw new LogicException("Path to a file must be relative, got '{$path->toString()}'");
+        }
+
         $path = Str::of($path->toString())->leftTrim('/');
 
         return $this
