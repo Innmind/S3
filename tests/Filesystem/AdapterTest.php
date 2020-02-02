@@ -46,7 +46,7 @@ class AdapterTest extends TestCase
             ->expects($this->once())
             ->method('upload')
             ->with(
-                Path::of('/foo.pdf'),
+                Path::of('foo.pdf'),
                 $content
             );
 
@@ -66,14 +66,14 @@ class AdapterTest extends TestCase
             ->expects($this->at(0))
             ->method('upload')
             ->with(
-                Path::of('/dir/sub/foo.pdf'),
+                Path::of('dir/sub/foo.pdf'),
                 $content1
             );
         $bucket
             ->expects($this->at(1))
             ->method('upload')
             ->with(
-                Path::of('/dir/sub/bar.pdf'),
+                Path::of('dir/sub/bar.pdf'),
                 $content2
             );
 
@@ -94,7 +94,7 @@ class AdapterTest extends TestCase
         $bucket
             ->expects($this->once())
             ->method('get')
-            ->with(Path::of('/foo.pdf'))
+            ->with(Path::of('foo.pdf'))
             ->willReturn($content = $this->createMock(Readable::class));
 
         $file = $filesystem->get(new Name('foo.pdf'));
@@ -112,7 +112,7 @@ class AdapterTest extends TestCase
         $bucket
             ->expects($this->once())
             ->method('get')
-            ->with(Path::of('/foo.pdf'))
+            ->with(Path::of('foo.pdf'))
             ->will($this->throwException(new UnableToAccessPath));
 
         $this->expectException(FileNotFound::class);
@@ -132,7 +132,7 @@ class AdapterTest extends TestCase
                 $bucket
                     ->expects($this->once())
                     ->method('contains')
-                    ->with(Path::of('/foo.pdf'))
+                    ->with(Path::of('foo.pdf'))
                     ->willReturn($exist);
 
                 $this->assertSame($exist, $filesystem->contains(new Name('foo.pdf')));
@@ -147,12 +147,12 @@ class AdapterTest extends TestCase
         $bucket
             ->expects($this->once())
             ->method('contains')
-            ->with(Path::of('/foo.pdf'))
+            ->with(Path::of('foo.pdf'))
             ->willReturn(true);
         $bucket
             ->expects($this->once())
             ->method('delete')
-            ->with(Path::of('/foo.pdf'));
+            ->with(Path::of('foo.pdf'));
 
         $this->assertNull($filesystem->remove(new Name('foo.pdf')));
     }
@@ -165,7 +165,7 @@ class AdapterTest extends TestCase
         $bucket
             ->expects($this->once())
             ->method('contains')
-            ->with(Path::of('/foo.pdf'))
+            ->with(Path::of('foo.pdf'))
             ->willReturn(false);
 
         $this->expectException(FileNotFound::class);

@@ -31,7 +31,7 @@ final class Adapter implements AdapterInterface
 
     public function add(File $file): void
     {
-        $this->upload('', $file);
+        $this->upload(Path::none(), $file);
     }
 
     /**
@@ -40,7 +40,7 @@ final class Adapter implements AdapterInterface
     public function get(Name $file): File
     {
         try {
-            $content = $this->bucket->get(Path::of("/{$file->toString()}"));
+            $content = $this->bucket->get(Path::of($file->toString()));
         } catch (UnableToAccessPath $e) {
             throw new FileNotFound($file->toString());
         }
@@ -62,7 +62,7 @@ final class Adapter implements AdapterInterface
 
     public function contains(Name $file): bool
     {
-        return $this->bucket->contains(Path::of("/{$file->toString()}"));
+        return $this->bucket->contains(Path::of($file->toString()));
     }
 
     /**
@@ -74,7 +74,7 @@ final class Adapter implements AdapterInterface
             throw new FileNotFound($file->toString());
         }
 
-        $this->bucket->delete(Path::of("/{$file->toString()}"));
+        $this->bucket->delete(Path::of($file->toString()));
     }
 
     /**
@@ -87,19 +87,36 @@ final class Adapter implements AdapterInterface
         return Set::of(File::class);
     }
 
-    private function upload(string $root, File $file): void
+    private function upload(Path $root, File $file): void
     {
         if ($file instanceof Directory) {
             $file->foreach(
-                fn(File $subFile) => $this->upload("$root/{$file->name()->toString()}", $subFile)
+                fn(File $subFile) => $this->upload($this->resolve($root, $file), $subFile),
             );
 
             return;
         }
 
         $this->bucket->upload(
-            Path::of("$root/{$file->name()->toString()}"),
-            $file->content()
+            $this->resolve($root, $file),
+            $file->content(),
+        );
+    }
+
+    private function resolve(Path $root, File $file): Path
+    {
+        $name = $file->name()->toString();
+
+        if ($file instanceof Directory) {
+            $name .= '/';
+        }
+
+        if ($root->equals(Path::none())) {
+            return Path::of($name);
+        }
+
+        return $root->resolve(
+            Path::of($name),
         );
     }
 }
