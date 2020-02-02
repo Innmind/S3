@@ -63,7 +63,7 @@ class NameTest extends TestCase
             ->then(function($string) {
                 $name = new Name($string);
 
-                $this->assertSame($string, (string) $name);
+                $this->assertSame($string, $name->toString());
             });
     }
 }

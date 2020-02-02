@@ -58,7 +58,7 @@ class RegionTest extends TestCase
             ->then(function($string) {
                 $region = new Region($string);
 
-                $this->assertSame($string, (string) $region);
+                $this->assertSame($string, $region->toString());
             });
     }
 }

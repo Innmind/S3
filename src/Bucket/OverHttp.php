@@ -45,7 +45,7 @@ final class OverHttp implements Bucket
         // @todo : the http client should be injected instead of relying on the
         // aws client to automatically create a http client
         $this->client = $client;
-        $this->bucket = (string) $bucket;
+        $this->bucket = $bucket->toString();
         $this->rootDirectory = Str::of((string) ($rootDirectory ?? new NullPath))->trim('/');
     }
 
@@ -70,7 +70,7 @@ final class OverHttp implements Bucket
                     'secret' => (string) $url->authority()->userInformation()->password(),
                 ],
                 'version' => $options['version'] ?? 'latest',
-                'region' => (string) new Region($options['region']),
+                'region' => (new Region($options['region']))->toString(),
                 'endpoint' => (string) $url
                     ->withAuthority(
                         $url->authority()->withUserInformation(new NullUserInformation)
