@@ -96,7 +96,7 @@ final class OverHttp implements Bucket
 
     public function get(Path $path): Readable
     {
-        $command = $this->client->getCommand('getObject', [
+        $command = $this->client->getCommand('GetObject', [
             'Bucket' => $this->bucket,
             'Key' => $this->keyFor($path),
         ]);
@@ -126,7 +126,7 @@ final class OverHttp implements Bucket
     public function delete(Path $path): void
     {
         $command = $this->client->getCommand(
-            'deleteObject',
+            'DeleteObject',
             [
                 'Bucket' => $this->bucket,
                 'Key' => $this->keyFor($path),
@@ -155,7 +155,7 @@ final class OverHttp implements Bucket
         }
 
         $paginator = $this->client->getPaginator(
-            'listObjects',
+            'ListObjects',
             [
                 'Bucket' => $this->bucket,
                 'Prefix' => $prefix = $this->keyFor($path),
@@ -200,7 +200,7 @@ final class OverHttp implements Bucket
     private function containsDirectory(Path $directory): bool
     {
         $command = $this->client->getCommand(
-            'listObjects',
+            'ListObjects',
             [
                 'Bucket' => $this->bucket,
                 'Prefix' => $this->keyFor($directory),

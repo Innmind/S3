@@ -90,7 +90,7 @@ class OverHttpTest extends TestCase
                     ->expects($this->once())
                     ->method('getCommand')
                     ->with(
-                        'getObject',
+                        'GetObject',
                         ['Bucket' => 'bucket-name', 'Key' => 'File-1423132640.pdf']
                     )
                     ->willReturn($command = $this->createMock(CommandInterface::class));
@@ -121,7 +121,7 @@ class OverHttpTest extends TestCase
                     ->expects($this->once())
                     ->method('getCommand')
                     ->with(
-                        'getObject',
+                        'GetObject',
                         ['Bucket' => 'bucket-name', 'Key' => 'root/File-1423132640.pdf']
                     )
                     ->willReturn($command = $this->createMock(CommandInterface::class));
@@ -148,7 +148,7 @@ class OverHttpTest extends TestCase
             ->expects($this->once())
             ->method('getCommand')
             ->with(
-                'getObject',
+                'GetObject',
                 ['Bucket' => 'bucket-name', 'Key' => 'File-1423132640.pdf']
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
@@ -253,7 +253,7 @@ class OverHttpTest extends TestCase
             ->expects($this->once())
             ->method('getCommand')
             ->with(
-                'deleteObject',
+                'DeleteObject',
                 ['Bucket' => 'bucket-name', 'Key' => 'sub/composer.json']
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
@@ -276,7 +276,7 @@ class OverHttpTest extends TestCase
             ->expects($this->once())
             ->method('getCommand')
             ->with(
-                'deleteObject',
+                'DeleteObject',
                 ['Bucket' => 'bucket-name', 'Key' => 'root/sub/composer.json']
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
@@ -320,7 +320,7 @@ class OverHttpTest extends TestCase
             ->expects($this->at(0))
             ->method('getCommand')
             ->with(
-                'listObjects',
+                'ListObjects',
                 [
                     'Bucket' => 'bucket-name',
                     'Prefix' => 'sub/folder/',
@@ -347,7 +347,7 @@ class OverHttpTest extends TestCase
             ->expects($this->at(0))
             ->method('getCommand')
             ->with(
-                'listObjects',
+                'ListObjects',
                 [
                     'Bucket' => 'bucket-name',
                     'Prefix' => 'sub/folder/',
@@ -374,7 +374,7 @@ class OverHttpTest extends TestCase
             ->expects($this->at(0))
             ->method('getCommand')
             ->with(
-                'listObjects',
+                'ListObjects',
                 [
                     'Bucket' => 'bucket-name',
                     'Prefix' => 'sub/folder/',
@@ -452,7 +452,7 @@ class OverHttpTest extends TestCase
             ->expects($this->at(0))
             ->method('getPaginator')
             ->with(
-                'listObjects',
+                'ListObjects',
                 [
                     'Bucket' => 'bucket-name',
                     'Prefix' => 'root/foo/',
@@ -461,7 +461,7 @@ class OverHttpTest extends TestCase
             )
             ->willReturn(new ResultPaginator(
                 $client,
-                'listObjects',
+                'ListObjects',
                 [
                     'Bucket' => 'bucket-name',
                     'Prefix' => 'root/foo/',
@@ -480,7 +480,7 @@ class OverHttpTest extends TestCase
             ->expects($this->at(1))
             ->method('getCommand')
             ->with(
-                'listObjects',
+                'ListObjects',
                 [
                     'Bucket' => 'bucket-name',
                     'Prefix' => 'root/foo/',
@@ -518,7 +518,7 @@ class OverHttpTest extends TestCase
             ->expects($this->at(0))
             ->method('getPaginator')
             ->with(
-                'listObjects',
+                'ListObjects',
                 [
                     'Bucket' => 'bucket-name',
                     'Prefix' => 'root/',
@@ -527,7 +527,7 @@ class OverHttpTest extends TestCase
             )
             ->willReturn(new ResultPaginator(
                 $client,
-                'listObjects',
+                'ListObjects',
                 [
                     'Bucket' => 'bucket-name',
                     'Prefix' => 'root/',
@@ -546,7 +546,7 @@ class OverHttpTest extends TestCase
             ->expects($this->at(1))
             ->method('getCommand')
             ->with(
-                'listObjects',
+                'ListObjects',
                 [
                     'Bucket' => 'bucket-name',
                     'Prefix' => 'root/',
