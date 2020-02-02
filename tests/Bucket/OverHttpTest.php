@@ -98,7 +98,7 @@ class OverHttpTest extends TestCase
                     ->expects($this->once())
                     ->method('execute')
                     ->with($command)
-                    ->willReturn(['Body' => stream_for($fileContent)]);
+                    ->willReturn(new Result(['Body' => stream_for($fileContent)]));
 
                 $content = $bucket->get(Path::of('File-1423132640.pdf'));
 
@@ -129,7 +129,7 @@ class OverHttpTest extends TestCase
                     ->expects($this->once())
                     ->method('execute')
                     ->with($command)
-                    ->willReturn(['Body' => stream_for($fileContent)]);
+                    ->willReturn(new Result(['Body' => stream_for($fileContent)]));
 
                 $content = $bucket->get(Path::of('File-1423132640.pdf'));
 
@@ -332,7 +332,7 @@ class OverHttpTest extends TestCase
             ->expects($this->at(1))
             ->method('execute')
             ->with($command)
-            ->willReturn(['Contents' => [['Key' => 'some-file']]]);
+            ->willReturn(new Result(['Contents' => [['Key' => 'some-file']]]));
 
         $this->assertTrue($bucket->contains(Path::of('sub/folder/')));
     }
@@ -359,7 +359,7 @@ class OverHttpTest extends TestCase
             ->expects($this->at(1))
             ->method('execute')
             ->with($command)
-            ->willReturn(['Contents' => []]);
+            ->willReturn(new Result(['Contents' => []]));
 
         $this->assertFalse($bucket->contains(Path::of('sub/folder/')));
     }
@@ -386,7 +386,7 @@ class OverHttpTest extends TestCase
             ->expects($this->at(1))
             ->method('execute')
             ->with($command)
-            ->willReturn([]);
+            ->willReturn(new Result([]));
 
         $this->assertFalse($bucket->contains(Path::of('sub/folder/')));
     }
