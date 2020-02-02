@@ -39,24 +39,24 @@ final class Adapter implements AdapterInterface
      */
     public function get(Name $file): File
     {
-        try {
-            $content = $this->bucket->get(Path::of($file->toString()));
-        } catch (UnableToAccessPath $e) {
+        if ($this->bucket->contains(Path::of($file->toString()))) {
+            try {
+                return new File\File(
+                    $file,
+                    $this->bucket->get(Path::of($file->toString())),
+                );
+            } catch (UnableToAccessPath $e) {
+                throw new FileNotFound($file->toString());
+            }
+        }
+
+        if (!$this->bucket->contains(Path::of($file->toString().'/'))) {
             throw new FileNotFound($file->toString());
         }
 
-        $parts = Str::of($file->toString())
-            ->split('/')
-            ->filter(static function(Str $part): bool {
-                return !$part->empty();
-            })
-            ->reverse();
-
-        return $parts->drop(1)->reduce(
-            File\File::named($parts->first()->toString(), $content),
-            static function(File $file, Str $directory): File {
-                return Directory\Directory::named($directory->toString())->add($file);
-            }
+        return new Directory\Directory(
+            $file,
+            $this->children(Path::of($file->toString().'/')),
         );
     }
 
@@ -114,5 +114,31 @@ final class Adapter implements AdapterInterface
         return $root->resolve(
             Path::of($name),
         );
+    }
+
+    /**
+     * @return Set<File>
+     */
+    private function children(Path $folder): Set
+    {
+        return $this
+            ->bucket
+            ->list($folder)
+            ->mapTo(
+                File::class,
+                function(Path $child) use ($folder): File {
+                    if ($child->directory()) {
+                        return new Directory\Directory(
+                            new Name(Str::of($child->toString())->dropEnd(1)->toString()), // drop trailing '/'
+                            $this->children($folder->resolve($child)),
+                        );
+                    }
+
+                    return File\File::named(
+                        $child->toString(),
+                        $this->bucket->get($folder->resolve($child)),
+                    );
+                },
+            );
     }
 }

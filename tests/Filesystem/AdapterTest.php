@@ -92,7 +92,12 @@ class AdapterTest extends TestCase
             $bucket = $this->createMock(Bucket::class)
         );
         $bucket
-            ->expects($this->once())
+            ->expects($this->at(0))
+            ->method('contains')
+            ->with(Path::of('foo.pdf'))
+            ->willReturn(true);
+        $bucket
+            ->expects($this->at(1))
             ->method('get')
             ->with(Path::of('foo.pdf'))
             ->willReturn($content = $this->createMock(Readable::class));
@@ -110,7 +115,13 @@ class AdapterTest extends TestCase
             $bucket = $this->createMock(Bucket::class)
         );
         $bucket
-            ->expects($this->once())
+            ->expects($this->at(0))
+            ->method('contains')
+            ->with(Path::of('foo.pdf'))
+            ->willReturn(true);
+        // true then throw simulate the file disappearing between the 2 calls
+        $bucket
+            ->expects($this->at(1))
             ->method('get')
             ->with(Path::of('foo.pdf'))
             ->will($this->throwException(new UnableToAccessPath));
@@ -119,6 +130,75 @@ class AdapterTest extends TestCase
         $this->expectExceptionMessage('foo.pdf');
 
         $filesystem->get(new Name('foo.pdf'));
+    }
+
+    public function testThrowWhenGettingUnknownDirectory()
+    {
+        $filesystem = new Adapter(
+            $bucket = $this->createMock(Bucket::class)
+        );
+        $bucket
+            ->expects($this->at(0))
+            ->method('contains')
+            ->with(Path::of('foo'))
+            ->willReturn(false);
+        $bucket
+            ->expects($this->at(1))
+            ->method('contains')
+            ->with(Path::of('foo/'))
+            ->willReturn(false);
+
+        $this->expectException(FileNotFound::class);
+        $this->expectExceptionMessage('foo');
+
+        $filesystem->get(new Name('foo'));
+    }
+
+    public function testGetDirectory()
+    {
+        $filesystem = new Adapter(
+            $bucket = $this->createMock(Bucket::class)
+        );
+        $bucket
+            ->expects($this->at(0))
+            ->method('contains')
+            ->with(Path::of('foo'))
+            ->willReturn(false);
+        $bucket
+            ->expects($this->at(1))
+            ->method('contains')
+            ->with(Path::of('foo/'))
+            ->willReturn(true);
+        $bucket
+            ->expects($this->at(2))
+            ->method('list')
+            ->with(Path::of('foo/'))
+            ->willReturn(Set::of(Path::class, Path::of('bar/')));
+        $bucket
+            ->expects($this->at(3))
+            ->method('list')
+            ->with(Path::of('foo/bar/'))
+            ->willReturn(Set::of(Path::class, Path::of('baz.txt')));
+        $bucket
+            ->expects($this->at(4))
+            ->method('get')
+            ->with(Path::of('foo/bar/baz.txt'))
+            ->willReturn($content = $this->createMock(Readable::class));
+
+        $directory = $filesystem->get(new Name('foo'));
+
+        $this->assertInstanceOf(Directory::class, $directory);
+        $this->assertSame('foo', $directory->name()->toString());
+        $this->assertFalse($directory->contains(new Name('baz.txt')));
+        $this->assertTrue($directory->contains(new Name('bar')));
+        $bar = $directory->get(new Name('bar'));
+        $this->assertInstanceOf(Directory::class, $bar);
+        $this->assertSame('bar', $bar->name()->toString());
+        $this->assertTrue($bar->contains(new Name('baz.txt')));
+        $baz = $bar->get(new Name('baz.txt'));
+        $this->assertInstanceOf(File::class, $baz);
+        $this->assertSame('baz.txt', $baz->name()->toString());
+        $this->assertSame($content, $baz->content());
     }
 
     public function testContains()
