@@ -30,6 +30,7 @@ use Aws\S3\{
     Exception\S3Exception,
     Exception\S3MultipartUploadException,
 };
+use Psr\Http\Message\StreamInterface;
 use Aws\ResultPaginator;
 
 final class OverHttp implements Bucket
@@ -58,8 +59,11 @@ final class OverHttp implements Bucket
 
     public static function locatedAt(Url $url): self
     {
+        /** @var array{version?: string, region: string} $options */
         $options = [];
         \parse_str($url->query()->toString(), $options);
+        /** @var string */
+        $region = $options['region'];
         $path = Str::of($url->path()->toString());
         $parts = $path
             ->split('/')
@@ -80,7 +84,7 @@ final class OverHttp implements Bucket
                     'secret' => $url->authority()->userInformation()->password()->toString(),
                 ],
                 'version' => $options['version'] ?? 'latest',
-                'region' => (new Region($options['region']))->toString(),
+                'region' => (new Region($region))->toString(),
                 'endpoint' => $url
                     ->withAuthority(
                         $url->authority()->withoutUserInformation(),
@@ -106,6 +110,7 @@ final class OverHttp implements Bucket
         ]);
 
         try {
+            /** @var array{Body: StreamInterface} */
             $response = $this->client->execute($command);
         } catch (S3Exception $e) {
             throw new UnableToAccessPath($path->toString(), 0, $e);
@@ -167,11 +172,18 @@ final class OverHttp implements Bucket
             ],
         );
 
+        /** @var Set<Path> */
         return Set::defer(
             Path::class,
             (function(string $prefix, ResultPaginator $results): \Generator {
                 foreach ($results as $result) {
-                    foreach ($result['Contents'] ?? [] as $file) {
+                    /** @var array{Contents?: list<array{Key: string}>, CommonPrefixes?: list<array{Prefix: string}>} $result */
+                    /** @var list<array{Key: string}> */
+                    $files = $result['Contents'] ?? [];
+                    /** @var list<array{Prefix: string}> */
+                    $directories = $result['CommonPrefixes'] ?? [];
+
+                    foreach ($files as $file) {
                         if ($file['Key'] === $prefix) {
                             // when the folder exist it is listed as the first element
                             // of the files and we dont wan't the folder itself in the
@@ -182,7 +194,7 @@ final class OverHttp implements Bucket
                         yield $this->removePrefix($prefix, $file['Key']);
                     }
 
-                    foreach ($result['CommonPrefixes'] ?? [] as $directory) {
+                    foreach ($directories as $directory) {
                         yield $this->removePrefix($prefix, $directory['Prefix']);
                     }
                 }
@@ -219,9 +231,12 @@ final class OverHttp implements Bucket
             ],
         );
 
+        /** @var array{Content?: list<array{Key:string}>} $result */
         $result = $this->client->execute($command);
+        /** @var list<array{Key:string}> */
+        $files = $result['Contents'] ?? [];
 
-        return \count($result['Contents'] ?? []) > 0;
+        return \count($files) > 0;
     }
 
     private function removePrefix(string $prefix, string $path): Path

@@ -119,6 +119,7 @@ final class Adapter implements AdapterInterface
      */
     private function children(Path $folder): Set
     {
+        /** @var Set<File> */
         return $this
             ->bucket
             ->list($folder)
