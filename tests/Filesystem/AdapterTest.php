@@ -63,18 +63,11 @@ class AdapterTest extends TestCase
         $content1 = $this->createMock(Readable::class);
         $content2 = $this->createMock(Readable::class);
         $bucket
-            ->expects($this->at(0))
+            ->expects($this->exactly(2))
             ->method('upload')
-            ->with(
-                Path::of('dir/sub/foo.pdf'),
-                $content1
-            );
-        $bucket
-            ->expects($this->at(1))
-            ->method('upload')
-            ->with(
-                Path::of('dir/sub/bar.pdf'),
-                $content2
+            ->withConsecutive(
+                [Path::of('dir/sub/foo.pdf'), $content1],
+                [Path::of('dir/sub/bar.pdf'), $content2],
             );
 
         $this->assertNull(
@@ -92,12 +85,12 @@ class AdapterTest extends TestCase
             $bucket = $this->createMock(Bucket::class)
         );
         $bucket
-            ->expects($this->at(0))
+            ->expects($this->once())
             ->method('contains')
             ->with(Path::of('foo.pdf'))
             ->willReturn(true);
         $bucket
-            ->expects($this->at(1))
+            ->expects($this->once())
             ->method('get')
             ->with(Path::of('foo.pdf'))
             ->willReturn($content = $this->createMock(Readable::class));
@@ -115,13 +108,13 @@ class AdapterTest extends TestCase
             $bucket = $this->createMock(Bucket::class)
         );
         $bucket
-            ->expects($this->at(0))
+            ->expects($this->once())
             ->method('contains')
             ->with(Path::of('foo.pdf'))
             ->willReturn(true);
         // true then throw simulate the file disappearing between the 2 calls
         $bucket
-            ->expects($this->at(1))
+            ->expects($this->once())
             ->method('get')
             ->with(Path::of('foo.pdf'))
             ->will($this->throwException(new UnableToAccessPath));
@@ -138,14 +131,9 @@ class AdapterTest extends TestCase
             $bucket = $this->createMock(Bucket::class)
         );
         $bucket
-            ->expects($this->at(0))
+            ->expects($this->exactly(2))
             ->method('contains')
-            ->with(Path::of('foo'))
-            ->willReturn(false);
-        $bucket
-            ->expects($this->at(1))
-            ->method('contains')
-            ->with(Path::of('foo/'))
+            ->withConsecutive([Path::of('foo')], [Path::of('foo/')])
             ->willReturn(false);
 
         $this->expectException(FileNotFound::class);
@@ -160,27 +148,26 @@ class AdapterTest extends TestCase
             $bucket = $this->createMock(Bucket::class)
         );
         $bucket
-            ->expects($this->at(0))
+            ->expects($this->exactly(2))
             ->method('contains')
-            ->with(Path::of('foo'))
-            ->willReturn(false);
+            ->withConsecutive(
+                [Path::of('foo')],
+                [Path::of('foo/')],
+            )
+            ->will($this->onConsecutiveCalls(false, true));
         $bucket
-            ->expects($this->at(1))
-            ->method('contains')
-            ->with(Path::of('foo/'))
-            ->willReturn(true);
-        $bucket
-            ->expects($this->at(2))
+            ->expects($this->exactly(2))
             ->method('list')
-            ->with(Path::of('foo/'))
-            ->willReturn(Set::of(Path::class, Path::of('bar/')));
+            ->withConsecutive(
+                [Path::of('foo/')],
+                [Path::of('foo/bar/')],
+            )
+            ->will($this->onConsecutiveCalls(
+                Set::of(Path::class, Path::of('bar/')),
+                Set::of(Path::class, Path::of('baz.txt'))
+            ));
         $bucket
-            ->expects($this->at(3))
-            ->method('list')
-            ->with(Path::of('foo/bar/'))
-            ->willReturn(Set::of(Path::class, Path::of('baz.txt')));
-        $bucket
-            ->expects($this->at(4))
+            ->expects($this->once())
             ->method('get')
             ->with(Path::of('foo/bar/baz.txt'))
             ->willReturn($content = $this->createMock(Readable::class));
@@ -238,18 +225,14 @@ class AdapterTest extends TestCase
             $bucket = $this->createMock(Bucket::class),
         );
         $bucket
-            ->expects($this->at(0))
+            ->expects($this->once(0))
             ->method('list')
             ->with(Path::none())
             ->willReturn(Set::of(Path::class, Path::of('foo'), Path::of('bar')));
         $bucket
-            ->expects($this->at(1))
+            ->expects($this->exactly(2))
             ->method('get')
-            ->with(Path::of('foo'));
-        $bucket
-            ->expects($this->at(2))
-            ->method('get')
-            ->with(Path::of('bar'));
+            ->withConsecutive([Path::of('foo')], [Path::of('bar')]);
 
         $files = $filesystem->all();
 

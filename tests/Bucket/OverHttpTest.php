@@ -343,7 +343,7 @@ class OverHttpTest extends TestCase
             new Name('bucket-name')
         );
         $client
-            ->expects($this->at(0))
+            ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'ListObjects',
@@ -355,7 +355,7 @@ class OverHttpTest extends TestCase
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
-            ->expects($this->at(1))
+            ->expects($this->once())
             ->method('execute')
             ->with($command)
             ->willReturn(new Result(['Contents' => [['Key' => 'some-file']]]));
@@ -370,7 +370,7 @@ class OverHttpTest extends TestCase
             new Name('bucket-name')
         );
         $client
-            ->expects($this->at(0))
+            ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'ListObjects',
@@ -382,7 +382,7 @@ class OverHttpTest extends TestCase
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
-            ->expects($this->at(1))
+            ->expects($this->once())
             ->method('execute')
             ->with($command)
             ->willReturn(new Result(['Contents' => []]));
@@ -397,7 +397,7 @@ class OverHttpTest extends TestCase
             new Name('bucket-name')
         );
         $client
-            ->expects($this->at(0))
+            ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'ListObjects',
@@ -409,7 +409,7 @@ class OverHttpTest extends TestCase
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
-            ->expects($this->at(1))
+            ->expects($this->once())
             ->method('execute')
             ->with($command)
             ->willReturn(new Result([]));
@@ -475,7 +475,7 @@ class OverHttpTest extends TestCase
             Path::of('/root/'),
         );
         $client
-            ->expects($this->at(0))
+            ->expects($this->once())
             ->method('getPaginator')
             ->with(
                 'ListObjects',
@@ -503,7 +503,7 @@ class OverHttpTest extends TestCase
                 ],
             ));
         $client
-            ->expects($this->at(1))
+            ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'ListObjects',
@@ -515,7 +515,7 @@ class OverHttpTest extends TestCase
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
-            ->expects($this->at(2))
+            ->expects($this->once())
             ->method('execute')
             ->with($command)
             ->willReturn(new Result([
@@ -544,7 +544,7 @@ class OverHttpTest extends TestCase
             Path::of('/root/'),
         );
         $client
-            ->expects($this->at(0))
+            ->expects($this->once())
             ->method('getPaginator')
             ->with(
                 'ListObjects',
@@ -572,7 +572,7 @@ class OverHttpTest extends TestCase
                 ],
             ));
         $client
-            ->expects($this->at(1))
+            ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'ListObjects',
@@ -584,7 +584,7 @@ class OverHttpTest extends TestCase
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
-            ->expects($this->at(2))
+            ->expects($this->once())
             ->method('execute')
             ->with($command)
             ->willReturn(new Result([
