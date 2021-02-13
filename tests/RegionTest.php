@@ -27,7 +27,7 @@ class RegionTest extends TestCase
     public function testThrowWhenContainsUpperCaseLetters()
     {
         $this
-            ->forAll(Set\Elements::of(...range('A', 'Z')))
+            ->forAll(Set\Elements::of(...\range('A', 'Z')))
             ->then(function($letter) {
                 $this->expectException(DomainException::class);
                 $this->expectExceptionMessage($letter.$letter.$letter);
@@ -40,7 +40,7 @@ class RegionTest extends TestCase
     {
         $this
             ->forAll(Set\Unicode::strings()->filter(static function($region) {
-                return !preg_match('~^[a-z0-9\-]+$~', $region);
+                return !\preg_match('~^[a-z0-9\-]+$~', $region);
             }))
             ->then(function($region) {
                 $this->expectException(DomainException::class);

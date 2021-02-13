@@ -32,7 +32,7 @@ class NameTest extends TestCase
     public function testThrowWhenContainsUpperCaseLetters()
     {
         $this
-            ->forAll(Set\Elements::of(...range('A', 'Z')))
+            ->forAll(Set\Elements::of(...\range('A', 'Z')))
             ->then(function($letter) {
                 $this->expectException(DomainException::class);
                 $this->expectExceptionMessage($letter.$letter.$letter);
@@ -45,7 +45,7 @@ class NameTest extends TestCase
     {
         $this
             ->forAll(Set\Unicode::strings()->filter(static function($name) {
-                return !preg_match('~^[a-z0-9\.\-]{3,}$~', $name);
+                return !\preg_match('~^[a-z0-9\.\-]{3,}$~', $name);
             }))
             ->then(function($name) {
                 $this->expectException(DomainException::class);
