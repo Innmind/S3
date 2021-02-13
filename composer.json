@@ -15,7 +15,7 @@
         "issues": "http://github.com/Innmind/S3/issues"
     },
     "require": {
-        "php": "~7.4",
+        "php": "~7.4|~8.0",
         "aws/aws-sdk-php": "^3.110",
         "innmind/url": "~3.0",
         "innmind/stream": "~2.0",
@@ -35,8 +35,9 @@
         }
     },
     "require-dev": {
-        "phpunit/phpunit": "~8.0",
-        "giorgiosironi/eris": "^0.11.0",
-        "vimeo/psalm": "^3.8"
+        "phpunit/phpunit": "~9.0",
+        "vimeo/psalm": "~4.4",
+        "innmind/black-box": "^4.16",
+        "innmind/coding-standard": "^1.1"
     }
 }

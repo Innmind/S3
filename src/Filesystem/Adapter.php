@@ -34,9 +34,6 @@ final class Adapter implements AdapterInterface
         $this->upload(Path::none(), $file);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function get(Name $file): File
     {
         if ($this->bucket->contains(Path::of($file->toString()))) {
@@ -65,17 +62,11 @@ final class Adapter implements AdapterInterface
         return $this->bucket->contains(Path::of($file->toString()));
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function remove(Name $file): void
     {
         $this->bucket->delete(Path::of($file->toString()));
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function all(): Set
     {
         return $this->children(Path::none());

@@ -30,14 +30,14 @@ use Aws\{
 use Psr\Http\Message\StreamInterface;
 use function GuzzleHttp\Psr7\stream_for;
 use PHPUnit\Framework\TestCase;
-use Eris\{
-    Generator,
-    TestTrait,
+use Innmind\BlackBox\{
+    PHPUnit\BlackBox,
+    Set as DataSet,
 };
 
 class OverHttpTest extends TestCase
 {
-    use TestTrait;
+    use BlackBox;
 
     public function testInterface()
     {
@@ -106,7 +106,7 @@ class OverHttpTest extends TestCase
     public function testGet()
     {
         $this
-            ->forAll(Generator\string())
+            ->forAll(DataSet\Unicode::strings())
             ->then(function($fileContent) {
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
@@ -136,7 +136,7 @@ class OverHttpTest extends TestCase
     public function testGetFileLocatedInSpecificRootDirectory()
     {
         $this
-            ->forAll(Generator\string())
+            ->forAll(DataSet\Unicode::strings())
             ->then(function($fileContent) {
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
@@ -193,7 +193,7 @@ class OverHttpTest extends TestCase
     public function testUpload()
     {
         $this
-            ->forAll(Generator\string())
+            ->forAll(DataSet\Unicode::strings())
             ->then(function($fileContent) {
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
@@ -220,7 +220,7 @@ class OverHttpTest extends TestCase
     public function testUploadLocatedInSpecificRootDirectory()
     {
         $this
-            ->forAll(Generator\string())
+            ->forAll(DataSet\Unicode::strings())
             ->then(function($fileContent) {
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
@@ -248,7 +248,7 @@ class OverHttpTest extends TestCase
     public function testThrowWhenUploadFailed()
     {
         $this
-            ->forAll(Generator\string())
+            ->forAll(DataSet\Unicode::strings())
             ->then(function($fileContent) {
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
@@ -317,7 +317,7 @@ class OverHttpTest extends TestCase
     public function testFileExists()
     {
         $this
-            ->forAll(Generator\elements(true, false))
+            ->forAll(DataSet\Elements::of(true, false))
             ->then(function($exist) {
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
@@ -343,7 +343,7 @@ class OverHttpTest extends TestCase
             new Name('bucket-name')
         );
         $client
-            ->expects($this->at(0))
+            ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'ListObjects',
@@ -355,7 +355,7 @@ class OverHttpTest extends TestCase
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
-            ->expects($this->at(1))
+            ->expects($this->once())
             ->method('execute')
             ->with($command)
             ->willReturn(new Result(['Contents' => [['Key' => 'some-file']]]));
@@ -370,7 +370,7 @@ class OverHttpTest extends TestCase
             new Name('bucket-name')
         );
         $client
-            ->expects($this->at(0))
+            ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'ListObjects',
@@ -382,7 +382,7 @@ class OverHttpTest extends TestCase
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
-            ->expects($this->at(1))
+            ->expects($this->once())
             ->method('execute')
             ->with($command)
             ->willReturn(new Result(['Contents' => []]));
@@ -397,7 +397,7 @@ class OverHttpTest extends TestCase
             new Name('bucket-name')
         );
         $client
-            ->expects($this->at(0))
+            ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'ListObjects',
@@ -409,7 +409,7 @@ class OverHttpTest extends TestCase
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
-            ->expects($this->at(1))
+            ->expects($this->once())
             ->method('execute')
             ->with($command)
             ->willReturn(new Result([]));
@@ -420,7 +420,7 @@ class OverHttpTest extends TestCase
     public function testFileExistsLocatedInSpecificRootDirectory()
     {
         $this
-            ->forAll(Generator\elements(true, false))
+            ->forAll(DataSet\Elements::of(true, false))
             ->then(function($exist) {
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
@@ -475,7 +475,7 @@ class OverHttpTest extends TestCase
             Path::of('/root/'),
         );
         $client
-            ->expects($this->at(0))
+            ->expects($this->once())
             ->method('getPaginator')
             ->with(
                 'ListObjects',
@@ -503,7 +503,7 @@ class OverHttpTest extends TestCase
                 ],
             ));
         $client
-            ->expects($this->at(1))
+            ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'ListObjects',
@@ -515,7 +515,7 @@ class OverHttpTest extends TestCase
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
-            ->expects($this->at(2))
+            ->expects($this->once())
             ->method('execute')
             ->with($command)
             ->willReturn(new Result([
@@ -544,7 +544,7 @@ class OverHttpTest extends TestCase
             Path::of('/root/'),
         );
         $client
-            ->expects($this->at(0))
+            ->expects($this->once())
             ->method('getPaginator')
             ->with(
                 'ListObjects',
@@ -572,7 +572,7 @@ class OverHttpTest extends TestCase
                 ],
             ));
         $client
-            ->expects($this->at(1))
+            ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'ListObjects',
@@ -584,7 +584,7 @@ class OverHttpTest extends TestCase
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
-            ->expects($this->at(2))
+            ->expects($this->once())
             ->method('execute')
             ->with($command)
             ->willReturn(new Result([

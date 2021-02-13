@@ -8,14 +8,14 @@ use Innmind\S3\{
     Exception\DomainException,
 };
 use PHPUnit\Framework\TestCase;
-use Eris\{
-    Generator,
-    TestTrait,
+use Innmind\BlackBox\{
+    PHPUnit\BlackBox,
+    Set,
 };
 
 class RegionTest extends TestCase
 {
-    use TestTrait;
+    use BlackBox;
 
     public function testThrowWenEmptyRegion()
     {
@@ -27,7 +27,7 @@ class RegionTest extends TestCase
     public function testThrowWhenContainsUpperCaseLetters()
     {
         $this
-            ->forAll(Generator\elements(...range('A', 'Z')))
+            ->forAll(Set\Elements::of(...\range('A', 'Z')))
             ->then(function($letter) {
                 $this->expectException(DomainException::class);
                 $this->expectExceptionMessage($letter.$letter.$letter);
@@ -39,10 +39,9 @@ class RegionTest extends TestCase
     public function testThrowWhenNotMatchingExpectedFormat()
     {
         $this
-            ->forAll(Generator\string())
-            ->when(static function($region) {
-                return !preg_match('~^[a-z0-9\-]+$~', $region);
-            })
+            ->forAll(Set\Unicode::strings()->filter(static function($region) {
+                return !\preg_match('~^[a-z0-9\-]+$~', $region);
+            }))
             ->then(function($region) {
                 $this->expectException(DomainException::class);
                 $this->expectExceptionMessage($region);
@@ -54,7 +53,7 @@ class RegionTest extends TestCase
     public function testStringCast()
     {
         $this
-            ->forAll(Generator\elements('us-east1', 'eu-west', 'fr-par'))
+            ->forAll(Set\Elements::of('us-east1', 'eu-west', 'fr-par'))
             ->then(function($string) {
                 $region = new Region($string);
 

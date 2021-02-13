@@ -31,7 +31,6 @@ use Innmind\Immutable\{
     Str,
     Set,
 };
-use function Innmind\Immutable\join;
 use Aws\S3\{
     S3ClientInterface,
     S3Client,
