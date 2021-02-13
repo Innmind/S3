@@ -19,14 +19,14 @@ use Innmind\Stream\Readable;
 use Innmind\Url\Path;
 use Innmind\Immutable\Set;
 use PHPUnit\Framework\TestCase;
-use Eris\{
-    Generator,
-    TestTrait,
+use Innmind\BlackBox\{
+    PHPUnit\BlackBox,
+    Set as DataSet,
 };
 
 class AdapterTest extends TestCase
 {
-    use TestTrait;
+    use BlackBox;
 
     public function testInterface()
     {
@@ -204,7 +204,7 @@ class AdapterTest extends TestCase
     public function testContains()
     {
         $this
-            ->forAll(Generator\elements(true, false))
+            ->forAll(DataSet\Elements::of(true, false))
             ->then(function($exist) {
                 $filesystem = new Adapter(
                     $bucket = $this->createMock(Bucket::class)
