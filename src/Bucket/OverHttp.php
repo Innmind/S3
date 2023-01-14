@@ -103,7 +103,7 @@ final class OverHttp implements Bucket
                     ->withoutPath()
                     ->withoutQuery()
                     ->toString(),
-                'http_handler' => self::httpHandler($fulfill),
+                'use_path_style_endpoint' => true,
             ]),
             new Name($parts->first()->toString()),
             $rootDirectory->empty() ? Path::none() : Path::of($rootDirectory->toString()),

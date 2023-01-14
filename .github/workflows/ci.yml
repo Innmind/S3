@@ -21,6 +21,8 @@ jobs:
           coverage: xdebug
       - name: Composer
         uses: "ramsey/composer-install@v2"
+      - name: Install S3 server
+        run: cd tests && npm ci
       - name: PHPUnit
         run: vendor/bin/phpunit --coverage-clover=coverage.clover
       - uses: codecov/codecov-action@v1

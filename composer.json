@@ -38,6 +38,8 @@
         "phpunit/phpunit": "~9.0",
         "vimeo/psalm": "~4.4",
         "innmind/black-box": "^4.16",
-        "innmind/coding-standard": "~2.0"
+        "innmind/coding-standard": "~2.0",
+        "symfony/filesystem": "^5.4",
+        "symfony/process": "^6.2"
     }
 }
