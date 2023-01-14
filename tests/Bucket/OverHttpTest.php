@@ -39,12 +39,6 @@ class OverHttpTest extends TestCase
     private static $s3ServerProcess;
     private $http;
 
-    public function setUp(): void
-    {
-        parent::setUp();
-        $this->http = http()['default']();
-    }
-
     public static function setUpBeforeClass(): void
     {
         parent::setUpBeforeClass();
@@ -64,7 +58,7 @@ class OverHttpTest extends TestCase
         self::$s3ServerProcess = new Process($command, __DIR__.'/..');
         self::$s3ServerProcess->start();
         self::$s3ServerProcess->waitUntil(
-            fn($type, $output) => \str_contains($output, 'S3rver listening'),
+            static fn($type, $output) => \str_contains($output, 'S3rver listening'),
         );
     }
 
@@ -75,6 +69,12 @@ class OverHttpTest extends TestCase
         if (self::$s3ServerProcess) {
             self::$s3ServerProcess->stop();
         }
+    }
+
+    public function setUp(): void
+    {
+        parent::setUp();
+        $this->http = http()['default']();
     }
 
     public function testInterface()
