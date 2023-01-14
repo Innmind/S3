@@ -17,12 +17,12 @@
     "require": {
         "php": "~8.1",
         "aws/aws-sdk-php": "^3.110",
-        "innmind/url": "~3.0",
-        "innmind/stream": "~2.0",
-        "innmind/immutable": "~3.3",
-        "innmind/http": "~4.1",
-        "innmind/filesystem": "~4.0",
-        "innmind/http-transport": "^5.0"
+        "innmind/url": "~4.1",
+        "innmind/stream": "~3.3",
+        "innmind/immutable": "~4.9",
+        "innmind/http": "~5.3",
+        "innmind/filesystem": "~6.1",
+        "innmind/http-transport": "~6.2"
     },
     "autoload": {
         "psr-4": {
@@ -39,7 +39,7 @@
         "vimeo/psalm": "~4.4",
         "innmind/black-box": "^4.16",
         "innmind/coding-standard": "~2.0",
-        "symfony/filesystem": "^5.4",
-        "symfony/process": "^6.2"
+        "symfony/filesystem": "~6.2",
+        "symfony/process": "~6.2"
     }
 }

@@ -15,15 +15,15 @@ use Innmind\Url\{
     Url,
     Path,
 };
-use Innmind\Stream\Readable;
+use Innmind\Filesystem\File\Content;
 use Innmind\HttpTransport\Transport;
 use Innmind\Immutable\Set;
-use function Innmind\Immutable\unwrap;
 use Aws\{
     S3\S3ClientInterface,
     S3\Exception\S3MultipartUploadException,
 };
-use function Innmind\HttpTransport\bootstrap as http;
+use Innmind\HttpTransport\Curl;
+use Innmind\TimeContinuum\Earth\Clock;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
 use PHPUnit\Framework\TestCase;
@@ -74,7 +74,7 @@ class OverHttpTest extends TestCase
     public function setUp(): void
     {
         parent::setUp();
-        $this->http = http()['default']();
+        $this->http = Curl::of(new Clock);
     }
 
     public function testInterface()
@@ -141,17 +141,17 @@ class OverHttpTest extends TestCase
         $bucket->get(Path::of('foo/'));
     }
 
-    public function testThrowWhenUnableToAccessFile()
+    public function testReturnNothingWhenUnableToAccessFile()
     {
         $bucket = OverHttp::locatedAt(
             $this->http,
             Url::of('http://S3RVER:S3RVER@localhost:4568/my-bucket?region=us-east-1'),
         );
 
-        $this->expectException(UnableToAccessPath::class);
-        $this->expectExceptionMessage('File-1423132640.pdf');
-
-        $bucket->get(Path::of('File-1423132640.pdf'));
+        $this->assertNull($bucket->get(Path::of('File-1423132640.pdf'))->match(
+            static fn($content) => $content,
+            static fn() => null,
+        ));
     }
 
     public function testUpload()
@@ -170,12 +170,15 @@ class OverHttpTest extends TestCase
                 $this->assertFalse($bucket->contains(Path::of('sub/composer.json')));
                 $this->assertNull($bucket->upload(
                     Path::of('sub/composer.json'),
-                    Readable\Stream::ofContent($fileContent),
+                    Content\Lines::ofContent($fileContent),
                 ));
                 $this->assertTrue($bucket->contains(Path::of('sub/composer.json')));
                 $this->assertSame(
                     $fileContent,
-                    $bucket->get(Path::of('sub/composer.json'))->toString(),
+                    $bucket->get(Path::of('sub/composer.json'))->match(
+                        static fn($content) => $content->toString(),
+                        static fn() => null,
+                    ),
                 );
             });
     }
@@ -194,12 +197,15 @@ class OverHttpTest extends TestCase
                 $this->assertFalse($bucket->contains(Path::of('sub/composer.json')));
                 $this->assertNull($bucket->upload(
                     Path::of('sub/composer.json'),
-                    Readable\Stream::ofContent($fileContent),
+                    Content\Lines::ofContent($fileContent),
                 ));
                 $this->assertTrue($bucket->contains(Path::of('sub/composer.json')));
                 $this->assertSame(
                     $fileContent,
-                    $bucket->get(Path::of('sub/composer.json'))->toString(),
+                    $bucket->get(Path::of('sub/composer.json'))->match(
+                        static fn($content) => $content->toString(),
+                        static fn() => null,
+                    ),
                 );
             });
     }
@@ -223,7 +229,7 @@ class OverHttpTest extends TestCase
 
                 $bucket->upload(
                     Path::of('sub/composer.json'),
-                    Readable\Stream::ofContent($fileContent),
+                    Content\Lines::ofContent($fileContent),
                 );
             });
     }
@@ -236,7 +242,7 @@ class OverHttpTest extends TestCase
         );
         $bucket->upload(
             Path::of('sub/composer.json'),
-            Readable\Stream::ofContent('test'),
+            Content\Lines::ofContent('test'),
         );
 
         $this->assertNull($bucket->delete(Path::of('sub/composer.json')));
@@ -251,7 +257,7 @@ class OverHttpTest extends TestCase
         );
         $bucket->upload(
             Path::of('sub/composer.json'),
-            Readable\Stream::ofContent('test'),
+            Content\Lines::ofContent('test'),
         );
 
         $this->assertNull($bucket->delete(Path::of('sub/composer.json')));
@@ -288,7 +294,7 @@ class OverHttpTest extends TestCase
         );
         $bucket->upload(
             Path::of('sub/composer.json'),
-            Readable\Stream::ofContent('test'),
+            Content\Lines::ofContent('test'),
         );
 
         $this->assertTrue($bucket->contains(Path::of('sub/')));
@@ -339,20 +345,19 @@ class OverHttpTest extends TestCase
         );
         $bucket->upload(
             Path::of('sub/composer.json'),
-            Readable\Stream::ofContent('test'),
+            Content\Lines::ofContent('test'),
         );
         $bucket->upload(
             Path::of('sub/deep/composer2.json'),
-            Readable\Stream::ofContent('test'),
+            Content\Lines::ofContent('test'),
         );
 
         $paths = $bucket->list(Path::of('sub/'));
 
         $this->assertInstanceOf(Set::class, $paths);
-        $this->assertSame(Path::class, $paths->type());
         $this->assertEquals(
             [Path::of('composer.json'), Path::of('deep/')],
-            unwrap($paths),
+            $paths->toList(),
         );
     }
 
@@ -364,20 +369,19 @@ class OverHttpTest extends TestCase
         );
         $bucket->upload(
             Path::of('sub/composer.json'),
-            Readable\Stream::ofContent('test'),
+            Content\Lines::ofContent('test'),
         );
         $bucket->upload(
             Path::of('some-file'),
-            Readable\Stream::ofContent('test'),
+            Content\Lines::ofContent('test'),
         );
 
         $paths = $bucket->list(Path::none());
 
         $this->assertInstanceOf(Set::class, $paths);
-        $this->assertSame(Path::class, $paths->type());
         $this->assertEquals(
             [Path::of('some-file'), Path::of('sub/')],
-            unwrap($paths),
+            $paths->toList(),
         );
     }
 }

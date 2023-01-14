@@ -4,24 +4,27 @@ declare(strict_types = 1);
 namespace Innmind\S3;
 
 use Innmind\Url\Path;
-use Innmind\Stream\Readable;
-use Innmind\Immutable\Set;
+use Innmind\Filesystem\File\Content;
+use Innmind\Immutable\{
+    Set,
+    Maybe,
+};
 
 interface Bucket
 {
     /**
      * Path must be relative
      *
-     * @throws Exception\UnableToAccessPath
+     * @return Maybe<Content>
      */
-    public function get(Path $path): Readable;
+    public function get(Path $path): Maybe;
 
     /**
      * Path must be relative
      *
      * @throws Exception\FailedToUploadContent
      */
-    public function upload(Path $path, Readable $content): void;
+    public function upload(Path $path, Content $content): void;
 
     /**
      * Path must be relative

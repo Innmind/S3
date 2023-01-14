@@ -14,7 +14,7 @@ use Innmind\Url\{
     Url,
     Path,
 };
-use Innmind\Stream\Readable;
+use Innmind\Filesystem\File\Content;
 use Innmind\Http\{
     Bridge\Psr7\Stream as PsrToStream,
     Adapter\Psr7\Stream as StreamToPsr,
@@ -23,6 +23,7 @@ use Innmind\HttpTransport\Transport;
 use Innmind\Immutable\{
     Str,
     Set,
+    Maybe,
 };
 use Aws\S3\{
     S3ClientInterface,
@@ -31,6 +32,7 @@ use Aws\S3\{
     Exception\S3MultipartUploadException,
 };
 use Aws\ResultPaginator;
+use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\StreamInterface;
 
 final class OverHttp implements Bucket
@@ -71,11 +73,11 @@ final class OverHttp implements Bucket
                 return !$part->empty();
             });
 
-        if ($parts->empty()) {
-            throw new LogicException('Missing bucket name in the url path');
-        }
-
-        $rootDirectory = $path->substring($parts->first()->length() + 1); // the 1 is for the leading /
+        $name = $parts->match(
+            static fn($name) => $name,
+            static fn() => throw new LogicException('Missing bucket name in the url path'),
+        );
+        $rootDirectory = $path->substring($name->length() + 1); // the 1 is for the leading /
 
         return new self(
             new S3Client([
@@ -94,12 +96,12 @@ final class OverHttp implements Bucket
                     ->toString(),
                 'use_path_style_endpoint' => true,
             ]),
-            new Name($parts->first()->toString()),
+            new Name($name->toString()),
             $rootDirectory->empty() ? Path::none() : Path::of($rootDirectory->toString()),
         );
     }
 
-    public function get(Path $path): Readable
+    public function get(Path $path): Maybe
     {
         if ($path->directory()) {
             throw new LogicException("A directory can't be retrieved, got '{$path->toString()}'");
@@ -114,19 +116,21 @@ final class OverHttp implements Bucket
             /** @var array{Body: StreamInterface} */
             $response = $this->client->execute($command);
         } catch (S3Exception $e) {
-            throw new UnableToAccessPath($path->toString(), 0, $e);
+            /** @var Maybe<Content> */
+            return Maybe::nothing();
         }
 
-        return new PsrToStream($response['Body']);
+        /** @var Maybe<Content> */
+        return Maybe::just(Content\Lines::ofContent($response['Body']->__toString()));
     }
 
-    public function upload(Path $path, Readable $content): void
+    public function upload(Path $path, Content $content): void
     {
         try {
             $this->client->upload(
                 $this->bucket,
                 $this->keyFor($path),
-                new StreamToPsr($content),
+                Utils::streamFor($content->toString()),
             );
         } catch (S3MultipartUploadException $e) {
             throw new FailedToUploadContent($path->toString(), 0, $e);
@@ -175,7 +179,6 @@ final class OverHttp implements Bucket
 
         /** @var Set<Path> */
         return Set::defer(
-            Path::class,
             (function(string $prefix, ResultPaginator $results): \Generator {
                 foreach ($results as $result) {
                     /** @var array{Contents?: list<array{Key: string}>, CommonPrefixes?: list<array{Prefix: string}>} $result */
