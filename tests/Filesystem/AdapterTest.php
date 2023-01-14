@@ -32,14 +32,14 @@ class AdapterTest extends TestCase
     {
         $this->assertInstanceOf(
             AdapterInterface::class,
-            new Adapter($this->createMock(Bucket::class))
+            new Adapter($this->createMock(Bucket::class)),
         );
     }
 
     public function testAddFile()
     {
         $filesystem = new Adapter(
-            $bucket = $this->createMock(Bucket::class)
+            $bucket = $this->createMock(Bucket::class),
         );
         $content = $this->createMock(Readable::class);
         $bucket
@@ -47,18 +47,18 @@ class AdapterTest extends TestCase
             ->method('upload')
             ->with(
                 Path::of('foo.pdf'),
-                $content
+                $content,
             );
 
         $this->assertNull(
-            $filesystem->add(File\File::named('foo.pdf', $content))
+            $filesystem->add(File\File::named('foo.pdf', $content)),
         );
     }
 
     public function testAddDirectory()
     {
         $filesystem = new Adapter(
-            $bucket = $this->createMock(Bucket::class)
+            $bucket = $this->createMock(Bucket::class),
         );
         $content1 = $this->createMock(Readable::class);
         $content2 = $this->createMock(Readable::class);
@@ -74,15 +74,15 @@ class AdapterTest extends TestCase
             $filesystem->add(Directory::named('dir')->add(
                 Directory::named('sub')
                     ->add(File\File::named('foo.pdf', $content1))
-                    ->add(File\File::named('bar.pdf', $content2))
-            ))
+                    ->add(File\File::named('bar.pdf', $content2)),
+            )),
         );
     }
 
     public function testGet()
     {
         $filesystem = new Adapter(
-            $bucket = $this->createMock(Bucket::class)
+            $bucket = $this->createMock(Bucket::class),
         );
         $bucket
             ->expects($this->once())
@@ -105,7 +105,7 @@ class AdapterTest extends TestCase
     public function testThrowWhenFileNotFound()
     {
         $filesystem = new Adapter(
-            $bucket = $this->createMock(Bucket::class)
+            $bucket = $this->createMock(Bucket::class),
         );
         $bucket
             ->expects($this->once())
@@ -128,7 +128,7 @@ class AdapterTest extends TestCase
     public function testThrowWhenGettingUnknownDirectory()
     {
         $filesystem = new Adapter(
-            $bucket = $this->createMock(Bucket::class)
+            $bucket = $this->createMock(Bucket::class),
         );
         $bucket
             ->expects($this->exactly(2))
@@ -145,7 +145,7 @@ class AdapterTest extends TestCase
     public function testGetDirectory()
     {
         $filesystem = new Adapter(
-            $bucket = $this->createMock(Bucket::class)
+            $bucket = $this->createMock(Bucket::class),
         );
         $bucket
             ->expects($this->exactly(2))
@@ -164,7 +164,7 @@ class AdapterTest extends TestCase
             )
             ->will($this->onConsecutiveCalls(
                 Set::of(Path::class, Path::of('bar/')),
-                Set::of(Path::class, Path::of('baz.txt'))
+                Set::of(Path::class, Path::of('baz.txt')),
             ));
         $bucket
             ->expects($this->once())
@@ -194,7 +194,7 @@ class AdapterTest extends TestCase
             ->forAll(DataSet\Elements::of(true, false))
             ->then(function($exist) {
                 $filesystem = new Adapter(
-                    $bucket = $this->createMock(Bucket::class)
+                    $bucket = $this->createMock(Bucket::class),
                 );
                 $bucket
                     ->expects($this->once())
@@ -209,7 +209,7 @@ class AdapterTest extends TestCase
     public function testRemove()
     {
         $filesystem = new Adapter(
-            $bucket = $this->createMock(Bucket::class)
+            $bucket = $this->createMock(Bucket::class),
         );
         $bucket
             ->expects($this->once())

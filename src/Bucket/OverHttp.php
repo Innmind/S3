@@ -53,7 +53,7 @@ final class OverHttp implements Bucket
     public function __construct(
         S3ClientInterface $client,
         Name $bucket,
-        Path $rootDirectory = null
+        Path $rootDirectory = null,
     ) {
         $rootDirectory ??= Path::none();
 
@@ -271,7 +271,7 @@ final class OverHttp implements Bucket
 
         return static function(
             RequestInterface $request,
-            array $options = []
+            array $options = [],
         ) use (
             $fulfill,
             $mapRequest,

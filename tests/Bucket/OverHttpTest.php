@@ -45,8 +45,8 @@ class OverHttpTest extends TestCase
             Bucket::class,
             new OverHttp(
                 $this->createMock(S3ClientInterface::class),
-                new Name('test-php-lib')
-            )
+                new Name('test-php-lib'),
+            ),
         );
     }
 
@@ -110,14 +110,14 @@ class OverHttpTest extends TestCase
             ->then(function($fileContent) {
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
-                    new Name('bucket-name')
+                    new Name('bucket-name'),
                 );
                 $client
                     ->expects($this->once())
                     ->method('getCommand')
                     ->with(
                         'GetObject',
-                        ['Bucket' => 'bucket-name', 'Key' => 'File-1423132640.pdf']
+                        ['Bucket' => 'bucket-name', 'Key' => 'File-1423132640.pdf'],
                     )
                     ->willReturn($command = $this->createMock(CommandInterface::class));
                 $client
@@ -141,14 +141,14 @@ class OverHttpTest extends TestCase
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
                     new Name('bucket-name'),
-                    Path::of('/root/')
+                    Path::of('/root/'),
                 );
                 $client
                     ->expects($this->once())
                     ->method('getCommand')
                     ->with(
                         'GetObject',
-                        ['Bucket' => 'bucket-name', 'Key' => 'root/File-1423132640.pdf']
+                        ['Bucket' => 'bucket-name', 'Key' => 'root/File-1423132640.pdf'],
                     )
                     ->willReturn($command = $this->createMock(CommandInterface::class));
                 $client
@@ -168,14 +168,14 @@ class OverHttpTest extends TestCase
     {
         $bucket = new OverHttp(
             $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
+            new Name('bucket-name'),
         );
         $client
             ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'GetObject',
-                ['Bucket' => 'bucket-name', 'Key' => 'File-1423132640.pdf']
+                ['Bucket' => 'bucket-name', 'Key' => 'File-1423132640.pdf'],
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
@@ -197,7 +197,7 @@ class OverHttpTest extends TestCase
             ->then(function($fileContent) {
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
-                    new Name('bucket-name')
+                    new Name('bucket-name'),
                 );
                 $client
                     ->expects($this->once())
@@ -207,7 +207,7 @@ class OverHttpTest extends TestCase
                         'sub/composer.json',
                         $this->callback(static function(StreamInterface $content) use ($fileContent) {
                             return (string) $content === $fileContent;
-                        })
+                        }),
                     );
 
                 $this->assertNull($bucket->upload(
@@ -225,7 +225,7 @@ class OverHttpTest extends TestCase
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
                     new Name('bucket-name'),
-                    Path::of('/root/')
+                    Path::of('/root/'),
                 );
                 $client
                     ->expects($this->once())
@@ -235,12 +235,12 @@ class OverHttpTest extends TestCase
                         'root/sub/composer.json',
                         $this->callback(static function(StreamInterface $content) use ($fileContent) {
                             return (string) $content === $fileContent;
-                        })
+                        }),
                     );
 
                 $this->assertNull($bucket->upload(
                     Path::of('sub/composer.json'),
-                    Readable\Stream::ofContent($fileContent)
+                    Readable\Stream::ofContent($fileContent),
                 ));
             });
     }
@@ -252,7 +252,7 @@ class OverHttpTest extends TestCase
             ->then(function($fileContent) {
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
-                    new Name('bucket-name')
+                    new Name('bucket-name'),
                 );
                 $client
                     ->expects($this->once())
@@ -273,14 +273,14 @@ class OverHttpTest extends TestCase
     {
         $bucket = new OverHttp(
             $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
+            new Name('bucket-name'),
         );
         $client
             ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'DeleteObject',
-                ['Bucket' => 'bucket-name', 'Key' => 'sub/composer.json']
+                ['Bucket' => 'bucket-name', 'Key' => 'sub/composer.json'],
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
@@ -296,14 +296,14 @@ class OverHttpTest extends TestCase
         $bucket = new OverHttp(
             $client = $this->createMock(S3ClientInterface::class),
             new Name('bucket-name'),
-            Path::of('/root/')
+            Path::of('/root/'),
         );
         $client
             ->expects($this->once())
             ->method('getCommand')
             ->with(
                 'DeleteObject',
-                ['Bucket' => 'bucket-name', 'Key' => 'root/sub/composer.json']
+                ['Bucket' => 'bucket-name', 'Key' => 'root/sub/composer.json'],
             )
             ->willReturn($command = $this->createMock(CommandInterface::class));
         $client
@@ -321,14 +321,14 @@ class OverHttpTest extends TestCase
             ->then(function($exist) {
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
-                    new Name('bucket-name')
+                    new Name('bucket-name'),
                 );
                 $client
                     ->expects($this->once())
                     ->method('doesObjectExist')
                     ->with(
                         'bucket-name',
-                        'sub/composer.json'
+                        'sub/composer.json',
                     )
                     ->willReturn($exist);
 
@@ -340,7 +340,7 @@ class OverHttpTest extends TestCase
     {
         $bucket = new OverHttp(
             $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
+            new Name('bucket-name'),
         );
         $client
             ->expects($this->once())
@@ -367,7 +367,7 @@ class OverHttpTest extends TestCase
     {
         $bucket = new OverHttp(
             $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
+            new Name('bucket-name'),
         );
         $client
             ->expects($this->once())
@@ -394,7 +394,7 @@ class OverHttpTest extends TestCase
     {
         $bucket = new OverHttp(
             $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
+            new Name('bucket-name'),
         );
         $client
             ->expects($this->once())
@@ -425,14 +425,14 @@ class OverHttpTest extends TestCase
                 $bucket = new OverHttp(
                     $client = $this->createMock(S3ClientInterface::class),
                     new Name('bucket-name'),
-                    Path::of('/root/')
+                    Path::of('/root/'),
                 );
                 $client
                     ->expects($this->once())
                     ->method('doesObjectExist')
                     ->with(
                         'bucket-name',
-                        'root/sub/composer.json'
+                        'root/sub/composer.json',
                     )
                     ->willReturn($exist);
 
@@ -445,7 +445,7 @@ class OverHttpTest extends TestCase
         $bucket = new OverHttp(
             $this->createMock(S3ClientInterface::class),
             new Name('bucket-name'),
-            Path::of('/root/')
+            Path::of('/root/'),
         );
 
         $this->expectException(LogicException::class);
