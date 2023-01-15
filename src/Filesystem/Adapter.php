@@ -125,11 +125,19 @@ final class Adapter implements AdapterInterface
                     $path = $folder->equals(Path::none()) ? $child : $folder->resolve($child);
 
                     if ($child->directory()) {
-                        /** @psalm-suppress ArgumentTypeCoercion */
-                        return Sequence::of(Directory\Directory::of(
-                            Name::of(Str::of($child->toString())->dropEnd(1)->toString()), // drop trailing '/'
-                            $this->children($path),
-                        ));
+                        /**
+                         * We use a lazy sequence here to avoid loading the whole
+                         * bucket
+                         * @psalm-suppress ArgumentTypeCoercion
+                         */
+                        return Sequence::lazy(
+                            function() use ($child, $path) {
+                                yield Directory\Directory::of(
+                                    Name::of(Str::of($child->toString())->dropEnd(1)->toString()), // drop trailing '/'
+                                    $this->children($path),
+                                );
+                            },
+                        );
                     }
 
                     /** @psalm-suppress ArgumentTypeCoercion */
