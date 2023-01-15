@@ -68,7 +68,7 @@ class OverHttpTest extends TestCase
     {
         $this->bucket = Factory::of(OSFactory::build())->build(
             Url::of('http://S3RVER:S3RVER@localhost:4568/my-bucket/'),
-            new Region('doesnt-matter-here'),
+            Region::of('doesnt-matter-here'),
         );
     }
 

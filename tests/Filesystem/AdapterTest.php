@@ -35,13 +35,13 @@ class AdapterTest extends TestCase
     {
         $this->assertInstanceOf(
             AdapterInterface::class,
-            new Adapter($this->createMock(Bucket::class)),
+            Adapter::of($this->createMock(Bucket::class)),
         );
     }
 
     public function testAddFile()
     {
-        $filesystem = new Adapter(
+        $filesystem = Adapter::of(
             $bucket = $this->createMock(Bucket::class),
         );
         $content = $this->createMock(Content::class);
@@ -61,7 +61,7 @@ class AdapterTest extends TestCase
 
     public function testAddDirectory()
     {
-        $filesystem = new Adapter(
+        $filesystem = Adapter::of(
             $bucket = $this->createMock(Bucket::class),
         );
         $content1 = $this->createMock(Content::class);
@@ -86,7 +86,7 @@ class AdapterTest extends TestCase
 
     public function testGet()
     {
-        $filesystem = new Adapter(
+        $filesystem = Adapter::of(
             $bucket = $this->createMock(Bucket::class),
         );
         $bucket
@@ -112,7 +112,7 @@ class AdapterTest extends TestCase
 
     public function testReturnNothingWhenFileNotFound()
     {
-        $filesystem = new Adapter(
+        $filesystem = Adapter::of(
             $bucket = $this->createMock(Bucket::class),
         );
         $bucket
@@ -134,7 +134,7 @@ class AdapterTest extends TestCase
 
     public function testGetDirectory()
     {
-        $filesystem = new Adapter(
+        $filesystem = Adapter::of(
             $bucket = $this->createMock(Bucket::class),
         );
         $bucket
@@ -189,7 +189,7 @@ class AdapterTest extends TestCase
         $this
             ->forAll(DataSet\Elements::of(true, false))
             ->then(function($exist) {
-                $filesystem = new Adapter(
+                $filesystem = Adapter::of(
                     $bucket = $this->createMock(Bucket::class),
                 );
                 $bucket
@@ -204,7 +204,7 @@ class AdapterTest extends TestCase
 
     public function testRemove()
     {
-        $filesystem = new Adapter(
+        $filesystem = Adapter::of(
             $bucket = $this->createMock(Bucket::class),
         );
         $bucket
@@ -218,7 +218,7 @@ class AdapterTest extends TestCase
 
     public function testFilesListOfFilesystemAlwaysEmpty()
     {
-        $filesystem = new Adapter(
+        $filesystem = Adapter::of(
             $bucket = $this->createMock(Bucket::class),
         );
         $bucket

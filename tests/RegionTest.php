@@ -21,7 +21,7 @@ class RegionTest extends TestCase
     {
         $this->expectException(DomainException::class);
 
-        new Region('');
+        Region::of('');
     }
 
     public function testThrowWhenContainsUpperCaseLetters()
@@ -32,7 +32,7 @@ class RegionTest extends TestCase
                 $this->expectException(DomainException::class);
                 $this->expectExceptionMessage($letter.$letter.$letter);
 
-                new Region($letter.$letter.$letter);
+                Region::of($letter.$letter.$letter);
             });
     }
 
@@ -46,7 +46,7 @@ class RegionTest extends TestCase
                 $this->expectException(DomainException::class);
                 $this->expectExceptionMessage($region);
 
-                new Region($region);
+                Region::of($region);
             });
     }
 
@@ -55,7 +55,7 @@ class RegionTest extends TestCase
         $this
             ->forAll(Set\Elements::of('us-east1', 'eu-west', 'fr-par'))
             ->then(function($string) {
-                $region = new Region($string);
+                $region = Region::of($string);
 
                 $this->assertSame($string, $region->toString());
             });

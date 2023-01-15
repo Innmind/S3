@@ -22,9 +22,14 @@ final class Adapter implements AdapterInterface
 {
     private Bucket $bucket;
 
-    public function __construct(Bucket $bucket)
+    private function __construct(Bucket $bucket)
     {
         $this->bucket = $bucket;
+    }
+
+    public static function of(Bucket $bucket): self
+    {
+        return new self($bucket);
     }
 
     public function add(File $file): void
