@@ -3,30 +3,33 @@ declare(strict_types = 1);
 
 namespace Innmind\S3\Filesystem;
 
-use Innmind\S3\{
-    Bucket,
-    Exception\UnableToAccessPath,
-};
+use Innmind\S3\Bucket;
 use Innmind\Filesystem\{
     Adapter as AdapterInterface,
     File,
     Directory,
     Name,
-    Exception\FileNotFound,
 };
 use Innmind\Url\Path;
 use Innmind\Immutable\{
     Set,
+    Sequence,
     Str,
+    Maybe,
 };
 
 final class Adapter implements AdapterInterface
 {
     private Bucket $bucket;
 
-    public function __construct(Bucket $bucket)
+    private function __construct(Bucket $bucket)
     {
         $this->bucket = $bucket;
+    }
+
+    public static function of(Bucket $bucket): self
+    {
+        return new self($bucket);
     }
 
     public function add(File $file): void
@@ -34,27 +37,24 @@ final class Adapter implements AdapterInterface
         $this->upload(Path::none(), $file);
     }
 
-    public function get(Name $file): File
+    public function get(Name $file): Maybe
     {
-        if ($this->bucket->contains(Path::of($file->toString()))) {
-            try {
-                return new File\File(
-                    $file,
-                    $this->bucket->get(Path::of($file->toString())),
-                );
-            } catch (UnableToAccessPath $e) {
-                throw new FileNotFound($file->toString());
-            }
+        if ($this->bucket->contains(Path::of($file->toString().'/'))) {
+            /** @var Maybe<File> */
+            return Maybe::just(Directory\Directory::of(
+                $file,
+                $this->children(Path::of($file->toString().'/')),
+            ));
         }
 
-        if (!$this->bucket->contains(Path::of($file->toString().'/'))) {
-            throw new FileNotFound($file->toString());
-        }
-
-        return new Directory\Directory(
-            $file,
-            $this->children(Path::of($file->toString().'/')),
-        );
+        /** @var Maybe<File> */
+        return $this
+            ->bucket
+            ->get(Path::of($file->toString()))
+            ->map(static fn($content) => new File\File(
+                $file,
+                $content,
+            ));
     }
 
     public function contains(Name $file): bool
@@ -69,7 +69,15 @@ final class Adapter implements AdapterInterface
 
     public function all(): Set
     {
-        return $this->children(Path::none());
+        return Set::of(...$this->root()->files()->toList());
+    }
+
+    public function root(): Directory
+    {
+        return Directory\Directory::of(
+            Name::of('root'),
+            $this->children(Path::none()),
+        );
     }
 
     private function upload(Path $root, File $file): void
@@ -106,30 +114,49 @@ final class Adapter implements AdapterInterface
     }
 
     /**
-     * @return Set<File>
+     * @return Sequence<File>
      */
-    private function children(Path $folder): Set
+    private function children(Path $folder): Sequence
     {
-        /** @var Set<File> */
+        /**
+         * @psalm-suppress InvalidArgument Due to empty Set
+         * @var Sequence<File>
+         */
         return $this
             ->bucket
             ->list($folder)
-            ->mapTo(
-                File::class,
-                function(Path $child) use ($folder): File {
+            ->flatMap(
+                function(Path $child) use ($folder): Sequence {
                     $path = $folder->equals(Path::none()) ? $child : $folder->resolve($child);
 
                     if ($child->directory()) {
-                        return new Directory\Directory(
-                            new Name(Str::of($child->toString())->dropEnd(1)->toString()), // drop trailing '/'
-                            $this->children($path),
+                        /**
+                         * We use a lazy sequence here to avoid loading the whole
+                         * bucket
+                         * @psalm-suppress ArgumentTypeCoercion
+                         */
+                        return Sequence::lazy(
+                            function() use ($child, $path) {
+                                yield Directory\Directory::of(
+                                    Name::of(Str::of($child->toString())->dropEnd(1)->toString()), // drop trailing '/'
+                                    $this->children($path),
+                                );
+                            },
                         );
                     }
 
-                    return File\File::named(
-                        $child->toString(),
-                        $this->bucket->get($path),
-                    );
+                    /** @psalm-suppress ArgumentTypeCoercion */
+                    return $this
+                        ->bucket
+                        ->get($path)
+                        ->map(static fn($content) => File\File::named(
+                            $child->toString(),
+                            $content,
+                        ))
+                        ->match(
+                            static fn($file) => Sequence::of($file),
+                            static fn() => Sequence::of(),
+                        );
                 },
             );
     }

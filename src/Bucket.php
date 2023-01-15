@@ -4,29 +4,35 @@ declare(strict_types = 1);
 namespace Innmind\S3;
 
 use Innmind\Url\Path;
-use Innmind\Stream\Readable;
-use Innmind\Immutable\Set;
+use Innmind\Filesystem\File\Content;
+use Innmind\Immutable\{
+    Sequence,
+    Maybe,
+    SideEffect,
+};
 
 interface Bucket
 {
     /**
      * Path must be relative
      *
-     * @throws Exception\UnableToAccessPath
+     * @return Maybe<Content>
      */
-    public function get(Path $path): Readable;
+    public function get(Path $path): Maybe;
 
     /**
      * Path must be relative
      *
-     * @throws Exception\FailedToUploadContent
+     * @return Maybe<SideEffect>
      */
-    public function upload(Path $path, Readable $content): void;
+    public function upload(Path $path, Content $content): Maybe;
 
     /**
      * Path must be relative
+     *
+     * @return Maybe<SideEffect>
      */
-    public function delete(Path $path): void;
+    public function delete(Path $path): Maybe;
 
     /**
      * Path must be relative
@@ -36,7 +42,7 @@ interface Bucket
     /**
      * Path must be relative or Path::none() to list the root of the bucket
      *
-     * @return Set<Path> Paths are relative to $path
+     * @return Sequence<Path> Paths are relative to $path
      */
-    public function list(Path $path): Set;
+    public function list(Path $path): Sequence;
 }

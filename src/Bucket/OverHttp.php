@@ -6,296 +6,271 @@ namespace Innmind\S3\Bucket;
 use Innmind\S3\{
     Bucket,
     Region,
-    Exception\UnableToAccessPath,
-    Exception\FailedToUploadContent,
+    Format\AmazonDate,
+    Format\AmazonTime,
     Exception\LogicException,
 };
 use Innmind\Url\{
     Url,
     Path,
+    Query,
 };
-use Innmind\Stream\Readable;
+use Innmind\HttpTransport\Transport;
+use Innmind\Filesystem\File\Content;
+use Innmind\TimeContinuum\{
+    Clock,
+    Earth\Timezone\UTC,
+};
 use Innmind\Http\{
-    Bridge\Psr7\Stream as PsrToStream,
-    Adapter\Psr7\Stream as StreamToPsr,
-    Translator\Request\Psr7Translator,
-    Translator\Response\ToPsr7,
-    Factory\Header\HeaderFactory,
+    Message\Request\Request,
+    Message\Method,
+    ProtocolVersion,
+    Headers,
+    Header\Header,
+    Header\Value\Value,
 };
-use Innmind\HttpTransport\{
-    Transport,
-    Exception\ConnectionFailed,
-    Exception\RuntimeException,
+use Innmind\Hash\Hash;
+use Innmind\Xml\{
+    Reader,
+    Element,
+    Node\Document,
 };
 use Innmind\Immutable\{
     Str,
-    Set,
-};
-use Aws\S3\{
-    S3ClientInterface,
-    S3Client,
-    Exception\S3Exception,
-    Exception\S3MultipartUploadException,
-};
-use Aws\ResultPaginator;
-use GuzzleHttp\Promise;
-use Psr\Http\Message\{
-    RequestInterface,
-    StreamInterface,
+    Sequence,
+    Maybe,
+    SideEffect,
+    Predicate\Instance,
 };
 
 final class OverHttp implements Bucket
 {
-    private S3ClientInterface $client;
-    private string $bucket;
-    private Path $rootDirectory;
+    private Transport $fulfill;
+    private Clock $clock;
+    private Reader $read;
+    private Url $bucket;
+    private Region $region;
 
-    public function __construct(
-        S3ClientInterface $client,
-        Name $bucket,
-        Path $rootDirectory = null
+    private function __construct(
+        Transport $fulfill,
+        Clock $clock,
+        Reader $reader,
+        Url $bucket,
+        Region $region,
     ) {
-        $rootDirectory ??= Path::none();
-
-        if (!$rootDirectory->directory()) {
-            throw new LogicException("Root directory '{$rootDirectory->toString()}' must represent a directory");
-        }
-
-        // @todo : the http client should be injected instead of relying on the
-        // aws client to automatically create a http client
-        $this->client = $client;
-        $this->bucket = $bucket->toString();
-        $this->rootDirectory = $rootDirectory;
+        $this->fulfill = $fulfill;
+        $this->clock = $clock;
+        $this->read = $reader;
+        $this->bucket = $bucket;
+        $this->region = $region;
     }
 
-    public static function locatedAt(Transport $fulfill, Url $url): self
-    {
-        /** @var array{version?: string, region: string} $options */
-        $options = [];
-        \parse_str($url->query()->toString(), $options);
-        /** @var string */
-        $region = $options['region'];
-        $path = Str::of($url->path()->toString());
-        $parts = $path
-            ->split('/')
-            ->filter(static function(Str $part): bool {
-                return !$part->empty();
-            });
-
-        if ($parts->empty()) {
-            throw new LogicException('Missing bucket name in the url path');
-        }
-
-        $rootDirectory = $path->substring($parts->first()->length() + 1); // the 1 is for the leading /
-
-        return new self(
-            new S3Client([
-                'credentials' => [
-                    'key' => $url->authority()->userInformation()->user()->toString(),
-                    'secret' => $url->authority()->userInformation()->password()->toString(),
-                ],
-                'version' => $options['version'] ?? 'latest',
-                'region' => (new Region($region))->toString(),
-                'endpoint' => $url
-                    ->withAuthority(
-                        $url->authority()->withoutUserInformation(),
-                    )
-                    ->withoutPath()
-                    ->withoutQuery()
-                    ->toString(),
-                'http_handler' => self::httpHandler($fulfill),
-            ]),
-            new Name($parts->first()->toString()),
-            $rootDirectory->empty() ? Path::none() : Path::of($rootDirectory->toString()),
-        );
+    public static function of(
+        Transport $fulfill,
+        Clock $clock,
+        Reader $reader,
+        Url $bucket,
+        Region $region,
+    ): self {
+        return new self($fulfill, $clock, $reader, $bucket, $region);
     }
 
-    public function get(Path $path): Readable
+    public function get(Path $path): Maybe
     {
         if ($path->directory()) {
             throw new LogicException("A directory can't be retrieved, got '{$path->toString()}'");
         }
 
-        $command = $this->client->getCommand('GetObject', [
-            'Bucket' => $this->bucket,
-            'Key' => $this->keyFor($path),
-        ]);
-
-        try {
-            /** @var array{Body: StreamInterface} */
-            $response = $this->client->execute($command);
-        } catch (S3Exception $e) {
-            throw new UnableToAccessPath($path->toString(), 0, $e);
-        }
-
-        return new PsrToStream($response['Body']);
+        return ($this->fulfill)($this->request(Method::get, $path))
+            ->maybe()
+            ->map(static fn($success) => $success->response()->body());
     }
 
-    public function upload(Path $path, Readable $content): void
+    public function upload(Path $path, Content $content): Maybe
     {
-        try {
-            $this->client->upload(
-                $this->bucket,
-                $this->keyFor($path),
-                new StreamToPsr($content),
-            );
-        } catch (S3MultipartUploadException $e) {
-            throw new FailedToUploadContent($path->toString(), 0, $e);
-        }
+        return ($this->fulfill)($this->request(Method::put, $path, $content))
+            ->maybe()
+            ->map(static fn() => new SideEffect);
     }
 
-    public function delete(Path $path): void
+    public function delete(Path $path): Maybe
     {
-        $command = $this->client->getCommand(
-            'DeleteObject',
-            [
-                'Bucket' => $this->bucket,
-                'Key' => $this->keyFor($path),
-            ],
-        );
-
-        $this->client->execute($command);
+        return ($this->fulfill)($this->request(Method::delete, $path))
+            ->maybe()
+            ->map(static fn() => new SideEffect);
     }
 
     public function contains(Path $path): bool
     {
         if ($path->directory()) {
-            return $this->containsDirectory($path);
+            return !$this->list($path)->empty();
         }
 
-        return $this->client->doesObjectExist(
-            $this->bucket,
-            $this->keyFor($path),
+        return $this->get($path)->match(
+            static fn() => true,
+            static fn() => false,
         );
     }
 
-    public function list(Path $path): Set
+    public function list(Path $path): Sequence
     {
         if (!$path->directory()) {
             throw new LogicException("Only a directory can be listed, got '{$path->toString()}'");
         }
 
-        $paginator = $this->client->getPaginator(
-            'ListObjects',
-            [
-                'Bucket' => $this->bucket,
-                'Prefix' => $prefix = $this->keyFor($path),
-                'Delimiter' => '/',
-            ],
-        );
-
-        /** @var Set<Path> */
-        return Set::defer(
-            Path::class,
-            (function(string $prefix, ResultPaginator $results): \Generator {
-                foreach ($results as $result) {
-                    /** @var array{Contents?: list<array{Key: string}>, CommonPrefixes?: list<array{Prefix: string}>} $result */
-                    /** @var list<array{Key: string}> */
-                    $files = $result['Contents'] ?? [];
-                    /** @var list<array{Prefix: string}> */
-                    $directories = $result['CommonPrefixes'] ?? [];
-
-                    foreach ($files as $file) {
-                        if ($file['Key'] === $prefix) {
-                            // when the folder exist it is listed as the first element
-                            // of the files and we dont wan't the folder itself in the
-                            // list of it's children
-                            continue;
-                        }
-
-                        yield $this->removePrefix($prefix, $file['Key']);
-                    }
-
-                    foreach ($directories as $directory) {
-                        yield $this->removePrefix($prefix, $directory['Prefix']);
-                    }
-                }
-            })($prefix, $paginator),
-        );
-    }
-
-    private function keyFor(Path $path): string
-    {
         if ($path->equals(Path::none())) {
-            return Str::of($this->rootDirectory->toString())->leftTrim('/')->toString();
+            $query = Query::of('delimiter=%2F&list-type=2');
+            $prefixLength = 0;
+        } else {
+            $query = Query::of('delimiter=%2F&list-type=2&prefix='.\urlencode($path->toString()));
+            $prefixLength = Str::of($path->toString())->length();
         }
 
-        if ($path->absolute()) {
-            throw new LogicException("Path to a file must be relative, got '{$path->toString()}'");
-        }
-
-        $path = $this
-            ->rootDirectory
-            ->resolve($path)
-            ->toString();
-
-        return Str::of($path)->leftTrim('/')->toString();
-    }
-
-    private function containsDirectory(Path $directory): bool
-    {
-        $command = $this->client->getCommand(
-            'ListObjects',
-            [
-                'Bucket' => $this->bucket,
-                'Prefix' => $this->keyFor($directory),
-                'MaxKeys' => 1, // no need to list all objects to know if directory exist
-            ],
-        );
-
-        /** @var array{Content?: list<array{Key:string}>} $result */
-        $result = $this->client->execute($command);
-        /** @var list<array{Key:string}> */
-        $files = $result['Contents'] ?? [];
-
-        return \count($files) > 0;
-    }
-
-    private function removePrefix(string $prefix, string $path): Path
-    {
-        return Path::of(
-            Str::of($path)
-                ->substring(Str::of($prefix)->length())
-                ->toString(),
-        );
+        return ($this->fulfill)($this->request(
+            Method::get,
+            $this->bucket->path(),
+            null,
+            $query,
+        ))
+            ->maybe()
+            ->map(static fn($success) => $success->response()->body())
+            ->flatMap($this->read)
+            ->keep(Instance::of(Document::class))
+            ->flatMap(static fn($document) => $document->children()->first())
+            ->map(static fn($list) => $list->children()->keep(Instance::of(Element::class)))
+            ->map(
+                static fn($elements) => $elements
+                    ->filter(static fn($element) => $element->name() === 'Contents')
+                    ->flatMap(
+                        static fn($content) => $content
+                            ->children()
+                            ->keep(Instance::of(Element::class))
+                            ->filter(static fn($attribute) => $attribute->name() === 'Key')
+                            ->map(static fn($attribute) => $attribute->content()),
+                    )
+                    ->append(
+                        $elements
+                            ->filter(static fn($element) => $element->name() === 'CommonPrefixes')
+                            ->flatMap(static fn($prefixes) => $prefixes->children())
+                            ->keep(Instance::of(Element::class))
+                            ->filter(static fn($element) => $element->name() === 'Prefix')
+                            ->map(static fn($prefix) => $prefix->content()),
+                    ),
+            )
+            ->map(
+                static fn($paths) => $paths
+                    ->map(Str::of(...))
+                    ->map(
+                        static fn($found) => $found
+                            ->trim()
+                            ->drop($prefixLength)
+                            ->toString(),
+                    )
+                    ->map(Path::of(...)),
+            )
+            ->match(
+                static fn($paths) => $paths,
+                static fn() => Sequence::of(),
+            );
     }
 
     /**
-     * We override the default http handler of the s3 client in order to
-     * incorporate this library nicely with the rest of the innmind ecosystem
+     * This method has been adapted from mnapoli/simple-s3
+     *
+     * @see https://github.com/mnapoli/simple-s3/blob/1.1.0/src/SimpleS3.php#L185-L237
      */
-    private static function httpHandler(Transport $fulfill): callable
-    {
-        $mapRequest = new Psr7Translator(new HeaderFactory);
-        $mapResponse = new ToPsr7;
+    private function request(
+        Method $method,
+        Path $path,
+        Content $content = null,
+        Query $query = null,
+    ): Request {
+        $now = $this->clock->now()->changeTimezone(new UTC);
+        $url = $this
+            ->bucket
+            ->withAuthority($this->bucket->authority()->withoutUserInformation())
+            ->withPath($this->bucket->path()->resolve($path));
 
-        return static function(
-            RequestInterface $request,
-            array $options = []
-        ) use (
-            $fulfill,
-            $mapRequest,
-            $mapResponse
-        ): Promise\PromiseInterface {
-            try {
-                $response = $fulfill($mapRequest($request));
-            } catch (ConnectionFailed $e) {
-                return new Promise\RejectedPromise([
-                    'exception' => $e,
-                    'connection_error' => true,
-                    'response' => null,
-                ]);
-            }
+        if ($query instanceof Query) {
+            $url = $url->withQuery($query);
+        }
 
-            if ($response->statusCode()->isSuccessful()) {
-                return new Promise\FulfilledPromise($mapResponse($response));
-            }
+        $amazonDate = $now->format(new AmazonDate);
+        $amazonTime = $now->format(new AmazonTime);
+        $contentHash = Hash::sha256
+            ->ofContent($content ?? Content\None::of())
+            ->hex();
+        $headerNames = 'x-amz-content-sha256;x-amz-date';
+        $headers = <<<HEADERS
+        x-amz-content-sha256:$contentHash
+        x-amz-date:$amazonTime
 
-            return new Promise\RejectedPromise([
-                'exception' => new RuntimeException,
-                'connection_error' => false,
-                'response' => $mapResponse($response),
-            ]);
-        };
+        HEADERS;
+        $request = <<<REQUEST
+        {$method->toString()}
+        {$url->path()->toString()}
+        {$url->query()->toString()}
+        $headers
+        $headerNames
+        $contentHash
+        REQUEST;
+        $scope = \sprintf(
+            '%s/%s/s3/aws4_request',
+            $amazonDate,
+            $this->region->toString(),
+        );
+        $toSign = \sprintf(
+            "AWS4-HMAC-SHA256\n%s\n%s\n%s",
+            $amazonTime,
+            $scope,
+            \hash('sha256', $request),
+        );
+        $signingKey = \hash_hmac(
+            'sha256',
+            'aws4_request',
+            \hash_hmac(
+                'sha256',
+                's3',
+                \hash_hmac(
+                    'sha256',
+                    $this->region->toString(),
+                    \hash_hmac(
+                        'sha256',
+                        $amazonDate,
+                        'AWS4'.$this
+                            ->bucket
+                            ->authority()
+                            ->userInformation()
+                            ->password()
+                            ->toString(),
+                        true,
+                    ),
+                    true,
+                ),
+                true,
+            ),
+            true,
+        );
+        $signature = \hash_hmac('sha256', $toSign, $signingKey);
+        $user = $this
+            ->bucket
+            ->authority()
+            ->userInformation()
+            ->user()
+            ->toString();
+
+        return new Request(
+            $url,
+            $method,
+            ProtocolVersion::v11,
+            Headers::of(
+                new Header('x-amz-date', new Value($amazonTime)),
+                new Header('x-amz-content-sha256', new Value($contentHash)),
+                new Header('Authorization', new Value(
+                    "AWS4-HMAC-SHA256 Credential=$user/$scope,SignedHeaders=$headerNames,Signature=$signature",
+                )),
+            ),
+            $content,
+        );
     }
 }

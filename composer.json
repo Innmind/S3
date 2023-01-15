@@ -8,21 +8,24 @@
     "authors": [
         {
             "name": "Baptiste Langlade",
-            "email": "langlade.baptiste@gmail.com"
+            "email": "baptiste.langlade@hey.com"
         }
     ],
     "support": {
         "issues": "http://github.com/Innmind/S3/issues"
     },
     "require": {
-        "php": "~7.4|~8.0",
-        "aws/aws-sdk-php": "^3.110",
-        "innmind/url": "~3.0",
-        "innmind/stream": "~2.0",
-        "innmind/immutable": "~3.3",
-        "innmind/http": "~4.1",
-        "innmind/filesystem": "~4.0",
-        "innmind/http-transport": "^5.0"
+        "php": "~8.1",
+        "innmind/url": "~4.1",
+        "innmind/stream": "~3.3",
+        "innmind/immutable": "~4.9",
+        "innmind/http": "~5.3",
+        "innmind/filesystem": "~6.1",
+        "innmind/http-transport": "^6.2.1",
+        "innmind/time-continuum": "~3.1",
+        "innmind/hash": "^1.1",
+        "innmind/xml": "^7.2",
+        "innmind/operating-system": "^3.4"
     },
     "autoload": {
         "psr-4": {
@@ -37,7 +40,9 @@
     "require-dev": {
         "phpunit/phpunit": "~9.0",
         "vimeo/psalm": "~4.4",
-        "innmind/black-box": "^4.16",
-        "innmind/coding-standard": "^1.1"
+        "innmind/black-box": "^4.17",
+        "innmind/coding-standard": "~2.0",
+        "symfony/filesystem": "~6.2",
+        "symfony/process": "~6.2"
     }
 }
