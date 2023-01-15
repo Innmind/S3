@@ -119,10 +119,10 @@ final class OverHttp implements Bucket
         }
 
         if ($path->equals(Path::none())) {
-            $query = Query::of('list-type=2&delimiter=/');
+            $query = Query::of('delimiter=%2F&list-type=2');
             $prefixLength = 0;
         } else {
-            $query = Query::of('list-type=2&delimiter=/&prefix='.$path->toString());
+            $query = Query::of('delimiter=%2F&list-type=2&prefix='.\urlencode($path->toString()));
             $prefixLength = Str::of($path->toString())->length();
         }
 
@@ -209,7 +209,7 @@ final class OverHttp implements Bucket
         $request = <<<REQUEST
         {$method->toString()}
         {$url->path()->toString()}
-
+        {$url->query()->toString()}
         $headers
         $headerNames
         $contentHash
