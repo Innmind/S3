@@ -99,6 +99,11 @@ final class Http implements Bucket
         return Set::of();
     }
 
+    /**
+     * This method has been adapted from mnapoli/simple-s3
+     *
+     * @see https://github.com/mnapoli/simple-s3/blob/1.1.0/src/SimpleS3.php#L185-L237
+     */
     private function request(
         Method $method,
         Path $path,
