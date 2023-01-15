@@ -43,7 +43,7 @@ use Innmind\Immutable\{
     Predicate\Instance,
 };
 
-final class Http implements Bucket
+final class OverHttp implements Bucket
 {
     private Transport $fulfill;
     private Clock $clock;

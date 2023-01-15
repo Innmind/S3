@@ -4,7 +4,7 @@ declare(strict_types = 1);
 namespace Tests\Innmind\S3\Bucket;
 
 use Innmind\S3\{
-    Bucket\Http,
+    Bucket\OverHttp,
     Bucket,
     Region,
     Exception\LogicException,
@@ -25,7 +25,7 @@ use Innmind\BlackBox\{
     Set,
 };
 
-class HttpTest extends TestCase
+class OverHttpTest extends TestCase
 {
     use BlackBox;
 
@@ -66,7 +66,7 @@ class HttpTest extends TestCase
 
     public function setUp(): void
     {
-        $this->bucket = Http::of(
+        $this->bucket = OverHttp::of(
             Curl::of($clock = new Clock),
             $clock,
             Reader::of(),
