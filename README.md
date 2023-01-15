@@ -30,7 +30,7 @@ $os = Factory::build();
 
 $bucket = Factory::of($os)->build(
     Url::of('https://acces_key:acces_secret@bucket-name.s3.region-name.scw.cloud/'),
-    new Region('region-name'),
+    Region::of('region-name'),
 );
 
 $file = $bucket->get(Path::of('some-file.txt'))->match(
@@ -50,7 +50,7 @@ use Innmind\S3\Filesystem;
 use Innmind\Filesystem\Name;
 
 $data = $os->filsystem()->mount(Path::of('/var/data'));
-$s3 = new Filesystem\Adapter($bucket);
+$s3 = Filesystem\Adapter::of($bucket);
 $data
     ->get(Name::of('images'))
     ->match(
