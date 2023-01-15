@@ -7,6 +7,7 @@ use Innmind\S3\{
     Bucket,
     Region,
     Exception\FailedToUploadContent,
+    Exception\LogicException,
 };
 use Innmind\Url\{
     Url,
@@ -59,6 +60,10 @@ final class Http implements Bucket
      */
     public function get(Path $path): Maybe
     {
+        if ($path->directory()) {
+            throw new LogicException("A directory can't be retrieved, got '{$path->toString()}'");
+        }
+
         return ($this->fulfill)($this->request(Method::get, $path))
             ->maybe()
             ->map(static fn($success) => $success->response()->body());

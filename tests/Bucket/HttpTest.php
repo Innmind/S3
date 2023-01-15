@@ -7,6 +7,7 @@ use Innmind\S3\{
     Bucket\Http,
     Bucket,
     Region,
+    Exception\LogicException,
 };
 use Innmind\HttpTransport\Curl;
 use Innmind\TimeContinuum\Earth\Clock;
@@ -103,5 +104,12 @@ class HttpTest extends TestCase
                         ),
                 );
             });
+    }
+
+    public function testPreventFromGettingADirectory()
+    {
+        $this->expectException(LogicException::class);
+
+        $this->bucket->get(Path::of('foo/'));
     }
 }
