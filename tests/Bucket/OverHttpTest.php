@@ -5,603 +5,253 @@ namespace Tests\Innmind\S3\Bucket;
 
 use Innmind\S3\{
     Bucket\OverHttp,
-    Bucket\Name,
     Bucket,
-    Exception\UnableToAccessPath,
-    Exception\FailedToUploadContent,
+    Region,
+    Factory,
     Exception\LogicException,
 };
+use Innmind\OperatingSystem\Factory as OSFactory;
+use Innmind\Filesystem\File\Content;
 use Innmind\Url\{
     Url,
     Path,
 };
-use Innmind\Stream\Readable;
-use Innmind\HttpTransport\Transport;
-use Innmind\Immutable\Set;
-use function Innmind\Immutable\unwrap;
-use Aws\{
-    S3\S3ClientInterface,
-    S3\Exception\S3Exception,
-    S3\Exception\S3MultipartUploadException,
-    CommandInterface,
-    ResultPaginator,
-    Result,
-};
-use Psr\Http\Message\StreamInterface;
-use function GuzzleHttp\Psr7\stream_for;
+use Innmind\Immutable\SideEffect;
+use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Process\Process;
 use PHPUnit\Framework\TestCase;
 use Innmind\BlackBox\{
     PHPUnit\BlackBox,
-    Set as DataSet,
+    Set,
 };
 
 class OverHttpTest extends TestCase
 {
     use BlackBox;
 
+    private static $s3ServerProcess;
+    private $bucket;
+
+    public static function setUpBeforeClass(): void
+    {
+        parent::setUpBeforeClass();
+
+        (new Filesystem)->remove(__DIR__.'/../../fixtures/my-bucket');
+
+        $command = [
+            'npm',
+            'run',
+            's3-server',
+            '--',
+            '--directory',
+            __DIR__.'/../../fixtures',
+            '--configure-bucket',
+            'my-bucket',
+        ];
+        self::$s3ServerProcess = new Process($command, __DIR__.'/..');
+        self::$s3ServerProcess->start();
+        self::$s3ServerProcess->waitUntil(
+            static fn($type, $output) => \str_contains($output, 'S3rver listening'),
+        );
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        parent::tearDownAfterClass();
+
+        if (self::$s3ServerProcess) {
+            self::$s3ServerProcess->stop();
+        }
+    }
+
+    public function setUp(): void
+    {
+        $this->bucket = Factory::of(OSFactory::build())->build(
+            Url::of('http://S3RVER:S3RVER@localhost:4568/my-bucket/'),
+            Region::of('doesnt-matter-here'),
+        );
+    }
+
     public function testInterface()
     {
         $this->assertInstanceOf(
             Bucket::class,
-            new OverHttp(
-                $this->createMock(S3ClientInterface::class),
-                new Name('test-php-lib')
-            )
+            $this->bucket,
         );
-    }
-
-    public function testLocatedAt()
-    {
-        $this->assertInstanceOf(
-            OverHttp::class,
-            OverHttp::locatedAt(
-                $this->createMock(Transport::class),
-                Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name?region=region-name'),
-            ),
-        );
-        $this->assertInstanceOf(
-            OverHttp::class,
-            OverHttp::locatedAt(
-                $this->createMock(Transport::class),
-                Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name/root-dir/?region=region-name'),
-            ),
-        );
-    }
-
-    public function testThrowWhenNoBucketNameInPath()
-    {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Missing bucket name in the url path');
-
-        OverHttp::locatedAt(
-            $this->createMock(Transport::class),
-            Url::of('https://key:secret@s3.region-name.scw.cloud/?region=region-name'),
-        );
-    }
-
-    public function testThrowWhenRootDirectoryDoesntRepresentADirectory()
-    {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage("Root directory '/root-dir' must represent a directory");
-
-        OverHttp::locatedAt(
-            $this->createMock(Transport::class),
-            Url::of('https://key:secret@s3.region-name.scw.cloud/bucket-name/root-dir?region=region-name'),
-        );
-    }
-
-    public function testPreventFromGettingADirectory()
-    {
-        $bucket = new OverHttp(
-            $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name'),
-        );
-
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage("A directory can't be retrieved, got 'foo/'");
-
-        $bucket->get(Path::of('foo/'));
-    }
-
-    public function testGet()
-    {
-        $this
-            ->forAll(DataSet\Unicode::strings())
-            ->then(function($fileContent) {
-                $bucket = new OverHttp(
-                    $client = $this->createMock(S3ClientInterface::class),
-                    new Name('bucket-name')
-                );
-                $client
-                    ->expects($this->once())
-                    ->method('getCommand')
-                    ->with(
-                        'GetObject',
-                        ['Bucket' => 'bucket-name', 'Key' => 'File-1423132640.pdf']
-                    )
-                    ->willReturn($command = $this->createMock(CommandInterface::class));
-                $client
-                    ->expects($this->once())
-                    ->method('execute')
-                    ->with($command)
-                    ->willReturn(new Result(['Body' => stream_for($fileContent)]));
-
-                $content = $bucket->get(Path::of('File-1423132640.pdf'));
-
-                $this->assertInstanceOf(Readable::class, $content);
-                $this->assertSame($fileContent, $content->toString());
-            });
-    }
-
-    public function testGetFileLocatedInSpecificRootDirectory()
-    {
-        $this
-            ->forAll(DataSet\Unicode::strings())
-            ->then(function($fileContent) {
-                $bucket = new OverHttp(
-                    $client = $this->createMock(S3ClientInterface::class),
-                    new Name('bucket-name'),
-                    Path::of('/root/')
-                );
-                $client
-                    ->expects($this->once())
-                    ->method('getCommand')
-                    ->with(
-                        'GetObject',
-                        ['Bucket' => 'bucket-name', 'Key' => 'root/File-1423132640.pdf']
-                    )
-                    ->willReturn($command = $this->createMock(CommandInterface::class));
-                $client
-                    ->expects($this->once())
-                    ->method('execute')
-                    ->with($command)
-                    ->willReturn(new Result(['Body' => stream_for($fileContent)]));
-
-                $content = $bucket->get(Path::of('File-1423132640.pdf'));
-
-                $this->assertInstanceOf(Readable::class, $content);
-                $this->assertSame($fileContent, $content->toString());
-            });
-    }
-
-    public function testThrowWhenUnableToAccessFile()
-    {
-        $bucket = new OverHttp(
-            $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
-        );
-        $client
-            ->expects($this->once())
-            ->method('getCommand')
-            ->with(
-                'GetObject',
-                ['Bucket' => 'bucket-name', 'Key' => 'File-1423132640.pdf']
-            )
-            ->willReturn($command = $this->createMock(CommandInterface::class));
-        $client
-            ->expects($this->once())
-            ->method('execute')
-            ->with($command)
-            ->will($this->throwException(new S3Exception('', $command)));
-
-        $this->expectException(UnableToAccessPath::class);
-        $this->expectExceptionMessage('File-1423132640.pdf');
-
-        $bucket->get(Path::of('File-1423132640.pdf'));
     }
 
     public function testUpload()
     {
         $this
-            ->forAll(DataSet\Unicode::strings())
-            ->then(function($fileContent) {
-                $bucket = new OverHttp(
-                    $client = $this->createMock(S3ClientInterface::class),
-                    new Name('bucket-name')
+            ->forAll(
+                Set\Elements::of('composer.json', 'sub/composer.json'),
+                Set\Unicode::strings(),
+            )
+            ->then(function($name, $content) {
+                $path = Path::of($name);
+
+                $this->assertFalse($this->bucket->contains($path));
+                $this->assertInstanceOf(
+                    SideEffect::class,
+                    $this
+                        ->bucket
+                        ->upload(
+                            $path,
+                            Content\Lines::ofContent($content),
+                        )
+                        ->match(
+                            static fn($sideEffect) => $sideEffect,
+                            static fn() => null,
+                        ),
                 );
-                $client
-                    ->expects($this->once())
-                    ->method('upload')
-                    ->with(
-                        'bucket-name',
-                        'sub/composer.json',
-                        $this->callback(static function(StreamInterface $content) use ($fileContent) {
-                            return (string) $content === $fileContent;
-                        })
-                    );
-
-                $this->assertNull($bucket->upload(
-                    Path::of('sub/composer.json'),
-                    Readable\Stream::ofContent($fileContent),
-                ));
-            });
-    }
-
-    public function testUploadLocatedInSpecificRootDirectory()
-    {
-        $this
-            ->forAll(DataSet\Unicode::strings())
-            ->then(function($fileContent) {
-                $bucket = new OverHttp(
-                    $client = $this->createMock(S3ClientInterface::class),
-                    new Name('bucket-name'),
-                    Path::of('/root/')
+                $this->assertTrue($this->bucket->contains($path));
+                $this->assertSame(
+                    $content,
+                    $this
+                        ->bucket
+                        ->get($path)
+                        ->match(
+                            static fn($content) => $content->toString(),
+                            static fn() => null,
+                        ),
                 );
-                $client
-                    ->expects($this->once())
-                    ->method('upload')
-                    ->with(
-                        'bucket-name',
-                        'root/sub/composer.json',
-                        $this->callback(static function(StreamInterface $content) use ($fileContent) {
-                            return (string) $content === $fileContent;
-                        })
-                    );
-
-                $this->assertNull($bucket->upload(
-                    Path::of('sub/composer.json'),
-                    Readable\Stream::ofContent($fileContent)
-                ));
-            });
-    }
-
-    public function testThrowWhenUploadFailed()
-    {
-        $this
-            ->forAll(DataSet\Unicode::strings())
-            ->then(function($fileContent) {
-                $bucket = new OverHttp(
-                    $client = $this->createMock(S3ClientInterface::class),
-                    new Name('bucket-name')
+                $this->assertInstanceOf(
+                    SideEffect::class,
+                    $this
+                        ->bucket
+                        ->delete($path)
+                        ->match(
+                            static fn($sideEffect) => $sideEffect,
+                            static fn() => null,
+                        ),
                 );
-                $client
-                    ->expects($this->once())
-                    ->method('upload')
-                    ->will($this->throwException($this->createMock(S3MultipartUploadException::class)));
-
-                $this->expectException(FailedToUploadContent::class);
-                $this->expectExceptionMessage('sub/composer.json');
-
-                $bucket->upload(
-                    Path::of('sub/composer.json'),
-                    Readable\Stream::ofContent($fileContent),
+                $this->assertFalse($this->bucket->contains($path));
+                $this->assertNull(
+                    $this
+                        ->bucket
+                        ->get($path)
+                        ->match(
+                            static fn($content) => $content->toString(),
+                            static fn() => null,
+                        ),
                 );
             });
     }
 
-    public function testDelete()
+    public function testPreventFromGettingADirectory()
     {
-        $bucket = new OverHttp(
-            $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
-        );
-        $client
-            ->expects($this->once())
-            ->method('getCommand')
-            ->with(
-                'DeleteObject',
-                ['Bucket' => 'bucket-name', 'Key' => 'sub/composer.json']
-            )
-            ->willReturn($command = $this->createMock(CommandInterface::class));
-        $client
-            ->expects($this->once())
-            ->method('execute')
-            ->with($command);
-
-        $this->assertNull($bucket->delete(Path::of('sub/composer.json')));
-    }
-
-    public function testDeleteLocatedInSpecificRootDirectory()
-    {
-        $bucket = new OverHttp(
-            $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name'),
-            Path::of('/root/')
-        );
-        $client
-            ->expects($this->once())
-            ->method('getCommand')
-            ->with(
-                'DeleteObject',
-                ['Bucket' => 'bucket-name', 'Key' => 'root/sub/composer.json']
-            )
-            ->willReturn($command = $this->createMock(CommandInterface::class));
-        $client
-            ->expects($this->once())
-            ->method('execute')
-            ->with($command);
-
-        $this->assertNull($bucket->delete(Path::of('sub/composer.json')));
-    }
-
-    public function testFileExists()
-    {
-        $this
-            ->forAll(DataSet\Elements::of(true, false))
-            ->then(function($exist) {
-                $bucket = new OverHttp(
-                    $client = $this->createMock(S3ClientInterface::class),
-                    new Name('bucket-name')
-                );
-                $client
-                    ->expects($this->once())
-                    ->method('doesObjectExist')
-                    ->with(
-                        'bucket-name',
-                        'sub/composer.json'
-                    )
-                    ->willReturn($exist);
-
-                $this->assertSame($exist, $bucket->contains(Path::of('sub/composer.json')));
-            });
-    }
-
-    public function testDirectoryExistsWhenTheresAtLeastOneElementFound()
-    {
-        $bucket = new OverHttp(
-            $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
-        );
-        $client
-            ->expects($this->once())
-            ->method('getCommand')
-            ->with(
-                'ListObjects',
-                [
-                    'Bucket' => 'bucket-name',
-                    'Prefix' => 'sub/folder/',
-                    'MaxKeys' => 1,
-                ],
-            )
-            ->willReturn($command = $this->createMock(CommandInterface::class));
-        $client
-            ->expects($this->once())
-            ->method('execute')
-            ->with($command)
-            ->willReturn(new Result(['Contents' => [['Key' => 'some-file']]]));
-
-        $this->assertTrue($bucket->contains(Path::of('sub/folder/')));
-    }
-
-    public function testDirectoryDoesntExistsWhenNoElementFound()
-    {
-        $bucket = new OverHttp(
-            $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
-        );
-        $client
-            ->expects($this->once())
-            ->method('getCommand')
-            ->with(
-                'ListObjects',
-                [
-                    'Bucket' => 'bucket-name',
-                    'Prefix' => 'sub/folder/',
-                    'MaxKeys' => 1,
-                ],
-            )
-            ->willReturn($command = $this->createMock(CommandInterface::class));
-        $client
-            ->expects($this->once())
-            ->method('execute')
-            ->with($command)
-            ->willReturn(new Result(['Contents' => []]));
-
-        $this->assertFalse($bucket->contains(Path::of('sub/folder/')));
-    }
-
-    public function testDirectoryDoesntExistsWhenNoContentReturned()
-    {
-        $bucket = new OverHttp(
-            $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name')
-        );
-        $client
-            ->expects($this->once())
-            ->method('getCommand')
-            ->with(
-                'ListObjects',
-                [
-                    'Bucket' => 'bucket-name',
-                    'Prefix' => 'sub/folder/',
-                    'MaxKeys' => 1,
-                ],
-            )
-            ->willReturn($command = $this->createMock(CommandInterface::class));
-        $client
-            ->expects($this->once())
-            ->method('execute')
-            ->with($command)
-            ->willReturn(new Result([]));
-
-        $this->assertFalse($bucket->contains(Path::of('sub/folder/')));
-    }
-
-    public function testFileExistsLocatedInSpecificRootDirectory()
-    {
-        $this
-            ->forAll(DataSet\Elements::of(true, false))
-            ->then(function($exist) {
-                $bucket = new OverHttp(
-                    $client = $this->createMock(S3ClientInterface::class),
-                    new Name('bucket-name'),
-                    Path::of('/root/')
-                );
-                $client
-                    ->expects($this->once())
-                    ->method('doesObjectExist')
-                    ->with(
-                        'bucket-name',
-                        'root/sub/composer.json'
-                    )
-                    ->willReturn($exist);
-
-                $this->assertSame($exist, $bucket->contains(Path::of('sub/composer.json')));
-            });
-    }
-
-    public function testThrowWhenUsingAnAbsolutePathToAccessAFile()
-    {
-        $bucket = new OverHttp(
-            $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name'),
-            Path::of('/root/')
-        );
-
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage("Path to a file must be relative, got '/sub/composer.json'");
 
-        $bucket->get(Path::of('/sub/composer.json'));
-    }
-
-    public function testThrowWhenTryingToLostOnANonDirectory()
-    {
-        $bucket = new OverHttp(
-            $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name'),
-        );
-
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage("Only a directory can be listed, got 'foo'");
-
-        $bucket->list(Path::of('foo'));
+        $this->bucket->get(Path::of('foo/'));
     }
 
     public function testListFilesInADirectory()
     {
-        $bucket = new OverHttp(
-            $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name'),
-            Path::of('/root/'),
-        );
-        $client
-            ->expects($this->once())
-            ->method('getPaginator')
-            ->with(
-                'ListObjects',
-                [
-                    'Bucket' => 'bucket-name',
-                    'Prefix' => 'root/foo/',
-                    'Delimiter' => '/',
-                ],
+        $this
+            ->forAll(
+                Set\Unicode::strings(),
+                Set\Unicode::strings(),
             )
-            ->willReturn(new ResultPaginator(
-                $client,
-                'ListObjects',
-                [
-                    'Bucket' => 'bucket-name',
-                    'Prefix' => 'root/foo/',
-                    'Delimiter' => '/',
-                ],
-                [
-                    // defaults coming from the sdk implementation
-                    'input_token' => null,
-                    'output_token' => null,
-                    'limit_key' => null,
-                    'result_key' => null,
-                    'more_results' => null,
-                ],
-            ));
-        $client
-            ->expects($this->once())
-            ->method('getCommand')
-            ->with(
-                'ListObjects',
-                [
-                    'Bucket' => 'bucket-name',
-                    'Prefix' => 'root/foo/',
-                    'Delimiter' => '/',
-                ],
-            )
-            ->willReturn($command = $this->createMock(CommandInterface::class));
-        $client
-            ->expects($this->once())
-            ->method('execute')
-            ->with($command)
-            ->willReturn(new Result([
-                'Contents' => [
-                    ['Key' => 'root/foo/'],
-                    ['Key' => 'root/foo/some-file'],
-                ],
-                'CommonPrefixes' => [['Prefix' => 'root/foo/sub-dir/']],
-            ]));
+            ->take(1)
+            ->disableShrinking()
+            ->then(function($content1, $content2) {
+                $this->bucket->upload(
+                    Path::of('l1/l2/file1.txt'),
+                    Content\Lines::ofContent($content1),
+                );
+                $this->bucket->upload(
+                    Path::of('l1/file2.txt'),
+                    Content\Lines::ofContent($content2),
+                );
 
-        $paths = $bucket->list(Path::of('foo/'));
-
-        $this->assertInstanceOf(Set::class, $paths);
-        $this->assertSame(Path::class, $paths->type());
-        $this->assertEquals(
-            [Path::of('some-file'), Path::of('sub-dir/')],
-            unwrap($paths),
-        );
+                $this->assertSame(
+                    ['file2.txt', 'l2/'],
+                    $this
+                        ->bucket
+                        ->list(Path::of('l1/'))
+                        ->map(static fn($path) => $path->toString())
+                        ->toList(),
+                );
+                $this->assertInstanceOf(
+                    SideEffect::class,
+                    $this
+                        ->bucket
+                        ->delete(Path::of('l1/'))
+                        ->match(
+                            static fn($sideEffect) => $sideEffect,
+                            static fn() => null,
+                        ),
+                );
+            });
     }
 
-    public function testListFilesAtBucketRoot()
+    public function testListFilesInRootDirectory()
     {
-        $bucket = new OverHttp(
-            $client = $this->createMock(S3ClientInterface::class),
-            new Name('bucket-name'),
-            Path::of('/root/'),
-        );
-        $client
-            ->expects($this->once())
-            ->method('getPaginator')
-            ->with(
-                'ListObjects',
-                [
-                    'Bucket' => 'bucket-name',
-                    'Prefix' => 'root/',
-                    'Delimiter' => '/',
-                ],
+        $this
+            ->forAll(
+                Set\Unicode::strings(),
+                Set\Unicode::strings(),
             )
-            ->willReturn(new ResultPaginator(
-                $client,
-                'ListObjects',
-                [
-                    'Bucket' => 'bucket-name',
-                    'Prefix' => 'root/',
-                    'Delimiter' => '/',
-                ],
-                [
-                    // defaults coming from the sdk implementation
-                    'input_token' => null,
-                    'output_token' => null,
-                    'limit_key' => null,
-                    'result_key' => null,
-                    'more_results' => null,
-                ],
-            ));
-        $client
-            ->expects($this->once())
-            ->method('getCommand')
-            ->with(
-                'ListObjects',
-                [
-                    'Bucket' => 'bucket-name',
-                    'Prefix' => 'root/',
-                    'Delimiter' => '/',
-                ],
-            )
-            ->willReturn($command = $this->createMock(CommandInterface::class));
-        $client
-            ->expects($this->once())
-            ->method('execute')
-            ->with($command)
-            ->willReturn(new Result([
-                'Contents' => [
-                    ['Key' => 'root/'],
-                    ['Key' => 'root/some-file'],
-                ],
-                'CommonPrefixes' => [['Prefix' => 'root/sub-dir/']],
-            ]));
+            ->then(function($content1, $content2) {
+                $this->bucket->upload(
+                    Path::of('l1/l2/file1.txt'),
+                    Content\Lines::ofContent($content1),
+                );
+                $this->bucket->upload(
+                    Path::of('l1/file2.txt'),
+                    Content\Lines::ofContent($content2),
+                );
 
-        $paths = $bucket->list(Path::none());
+                $this->assertSame(
+                    ['l1/'],
+                    $this
+                        ->bucket
+                        ->list(Path::none())
+                        ->map(static fn($path) => $path->toString())
+                        ->toList(),
+                );
+                $this->assertInstanceOf(
+                    SideEffect::class,
+                    $this
+                        ->bucket
+                        ->delete(Path::of('l1/'))
+                        ->match(
+                            static fn($sideEffect) => $sideEffect,
+                            static fn() => null,
+                        ),
+                );
+            });
+    }
 
-        $this->assertInstanceOf(Set::class, $paths);
-        $this->assertSame(Path::class, $paths->type());
-        $this->assertEquals(
-            [Path::of('some-file'), Path::of('sub-dir/')],
-            unwrap($paths),
-        );
+    public function testPreventFromListingNonDirectory()
+    {
+        $this->expectException(LogicException::class);
+
+        $this->bucket->list(Path::of('foo'));
+    }
+
+    public function testContainsDirectory()
+    {
+        $this
+            ->forAll(Set\Unicode::strings())
+            ->then(function($content) {
+                $this->bucket->upload(
+                    Path::of('l1/l2/file1.txt'),
+                    Content\Lines::ofContent($content),
+                );
+
+                $this->assertTrue($this->bucket->contains(Path::of('l1/')));
+                $this->assertTrue($this->bucket->contains(Path::of('l1/l2/')));
+                $this->assertInstanceOf(
+                    SideEffect::class,
+                    $this
+                        ->bucket
+                        ->delete(Path::of('l1/'))
+                        ->match(
+                            static fn($sideEffect) => $sideEffect,
+                            static fn() => null,
+                        ),
+                );
+            });
     }
 }
