@@ -17,6 +17,7 @@ use Innmind\Filesystem\File\Content;
 use Innmind\Url\Path;
 use Innmind\Immutable\{
     Set,
+    Sequence,
     Maybe,
     SideEffect,
 };
@@ -149,8 +150,8 @@ class AdapterTest extends TestCase
                 [Path::of('foo/bar/')],
             )
             ->will($this->onConsecutiveCalls(
-                Set::of(Path::of('bar/')),
-                Set::of(Path::of('baz.txt')),
+                Sequence::of(Path::of('bar/')),
+                Sequence::of(Path::of('baz.txt')),
             ));
         $bucket
             ->expects($this->once())
@@ -224,7 +225,7 @@ class AdapterTest extends TestCase
             ->expects($this->once(0))
             ->method('list')
             ->with(Path::none())
-            ->willReturn(Set::of(Path::of('foo'), Path::of('bar')));
+            ->willReturn(Sequence::of(Path::of('foo'), Path::of('bar')));
         $bucket
             ->expects($this->exactly(2))
             ->method('get')

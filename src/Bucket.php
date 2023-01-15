@@ -6,7 +6,7 @@ namespace Innmind\S3;
 use Innmind\Url\Path;
 use Innmind\Filesystem\File\Content;
 use Innmind\Immutable\{
-    Set,
+    Sequence,
     Maybe,
     SideEffect,
 };
@@ -42,7 +42,7 @@ interface Bucket
     /**
      * Path must be relative or Path::none() to list the root of the bucket
      *
-     * @return Set<Path> Paths are relative to $path
+     * @return Sequence<Path> Paths are relative to $path
      */
-    public function list(Path $path): Set;
+    public function list(Path $path): Sequence;
 }

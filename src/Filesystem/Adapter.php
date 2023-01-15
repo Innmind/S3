@@ -13,6 +13,7 @@ use Innmind\Filesystem\{
 use Innmind\Url\Path;
 use Innmind\Immutable\{
     Set,
+    Sequence,
     Str,
     Maybe,
 };
@@ -63,14 +64,14 @@ final class Adapter implements AdapterInterface
 
     public function all(): Set
     {
-        return $this->children(Path::none());
+        return Set::of(...$this->root()->files()->toList());
     }
 
     public function root(): Directory
     {
         return Directory\Directory::of(
             Name::of('root'),
-            $this->all(),
+            $this->children(Path::none()),
         );
     }
 
@@ -108,24 +109,24 @@ final class Adapter implements AdapterInterface
     }
 
     /**
-     * @return Set<File>
+     * @return Sequence<File>
      */
-    private function children(Path $folder): Set
+    private function children(Path $folder): Sequence
     {
         /**
          * @psalm-suppress InvalidArgument Due to empty Set
-         * @var Set<File>
+         * @var Sequence<File>
          */
         return $this
             ->bucket
             ->list($folder)
             ->flatMap(
-                function(Path $child) use ($folder): Set {
+                function(Path $child) use ($folder): Sequence {
                     $path = $folder->equals(Path::none()) ? $child : $folder->resolve($child);
 
                     if ($child->directory()) {
                         /** @psalm-suppress ArgumentTypeCoercion */
-                        return Set::of(Directory\Directory::of(
+                        return Sequence::of(Directory\Directory::of(
                             Name::of(Str::of($child->toString())->dropEnd(1)->toString()), // drop trailing '/'
                             $this->children($path),
                         ));
@@ -140,8 +141,8 @@ final class Adapter implements AdapterInterface
                             $content,
                         ))
                         ->match(
-                            static fn($file) => Set::of($file),
-                            static fn() => Set::of(),
+                            static fn($file) => Sequence::of($file),
+                            static fn() => Sequence::of(),
                         );
                 },
             );

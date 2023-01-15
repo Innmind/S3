@@ -37,7 +37,7 @@ use Innmind\Xml\{
 };
 use Innmind\Immutable\{
     Str,
-    Set,
+    Sequence,
     Maybe,
     SideEffect,
     Predicate\Instance,
@@ -112,7 +112,7 @@ final class OverHttp implements Bucket
         );
     }
 
-    public function list(Path $path): Set
+    public function list(Path $path): Sequence
     {
         if (!$path->directory()) {
             throw new LogicException("Only a directory can be listed, got '{$path->toString()}'");
@@ -169,8 +169,8 @@ final class OverHttp implements Bucket
                     ->map(Path::of(...)),
             )
             ->match(
-                static fn($paths) => Set::of(...$paths->toList()),
-                static fn() => Set::of(),
+                static fn($paths) => $paths,
+                static fn() => Sequence::of(),
             );
     }
 
