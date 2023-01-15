@@ -7,12 +7,11 @@ use Innmind\S3\{
     Bucket\OverHttp,
     Bucket,
     Region,
+    Factory,
     Exception\LogicException,
 };
-use Innmind\HttpTransport\Curl;
-use Innmind\TimeContinuum\Earth\Clock;
+use Innmind\OperatingSystem\Factory as OSFactory;
 use Innmind\Filesystem\File\Content;
-use Innmind\Xml\Reader\Reader;
 use Innmind\Url\{
     Url,
     Path,
@@ -67,10 +66,7 @@ class OverHttpTest extends TestCase
 
     public function setUp(): void
     {
-        $this->bucket = OverHttp::of(
-            Curl::of($clock = new Clock),
-            $clock,
-            Reader::of(),
+        $this->bucket = Factory::of(OSFactory::build())->build(
             Url::of('http://S3RVER:S3RVER@localhost:4568/my-bucket/'),
             new Region('doesnt-matter-here'),
         );
