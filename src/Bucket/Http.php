@@ -6,6 +6,8 @@ namespace Innmind\S3\Bucket;
 use Innmind\S3\{
     Bucket,
     Region,
+    Format\AmazonDate,
+    Format\AmazonTime,
     Exception\FailedToUploadContent,
     Exception\LogicException,
 };
@@ -18,7 +20,6 @@ use Innmind\HttpTransport\Transport;
 use Innmind\Filesystem\File\Content;
 use Innmind\TimeContinuum\{
     Clock,
-    Format,
     Earth\Timezone\UTC,
 };
 use Innmind\Http\{
@@ -215,18 +216,8 @@ final class Http implements Bucket
             $url = $url->withQuery($query);
         }
 
-        $amazonDate = $now->format(new class implements Format {
-            public function toString(): string
-            {
-                return 'Ymd';
-            }
-        });
-        $amazonTime = $now->format(new class implements Format {
-            public function toString(): string
-            {
-                return 'Ymd\THis\Z';
-            }
-        });
+        $amazonDate = $now->format(new AmazonDate);
+        $amazonTime = $now->format(new AmazonTime);
         $contentHash = Hash::sha256
             ->ofContent($content ?? Content\None::of())
             ->hex();
