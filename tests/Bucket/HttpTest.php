@@ -66,7 +66,7 @@ class HttpTest extends TestCase
 
     public function setUp(): void
     {
-        $this->bucket = new Http(
+        $this->bucket = Http::of(
             Curl::of($clock = new Clock),
             $clock,
             Reader::of(),

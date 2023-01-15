@@ -50,7 +50,7 @@ final class Http implements Bucket
     private Url $bucket;
     private Region $region;
 
-    public function __construct(
+    private function __construct(
         Transport $fulfill,
         Clock $clock,
         Reader $reader,
@@ -62,6 +62,16 @@ final class Http implements Bucket
         $this->read = $reader;
         $this->bucket = $bucket;
         $this->region = $region;
+    }
+
+    public static function of(
+        Transport $fulfill,
+        Clock $clock,
+        Reader $reader,
+        Url $bucket,
+        Region $region,
+    ): self {
+        return new self($fulfill, $clock, $reader, $bucket, $region);
     }
 
     /**
