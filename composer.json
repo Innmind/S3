@@ -21,7 +21,7 @@
         "innmind/immutable": "~4.9",
         "innmind/http": "~5.3",
         "innmind/filesystem": "~6.1",
-        "innmind/http-transport": "~6.2",
+        "innmind/http-transport": "^6.2.1",
         "innmind/time-continuum": "~3.1",
         "innmind/hash": "^1.1",
         "innmind/xml": "^7.2",
