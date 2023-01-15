@@ -91,25 +91,30 @@ class HttpTest extends TestCase
                 Set\Unicode::strings(),
             )
             ->then(function($name, $content) {
+                $path = Path::of($name);
+
+                $this->assertFalse($this->bucket->contains($path));
                 $this->assertNull($this->bucket->upload(
-                    Path::of($name),
+                    $path,
                     Content\Lines::ofContent($content),
                 ));
+                $this->assertTrue($this->bucket->contains($path));
                 $this->assertSame(
                     $content,
                     $this
                         ->bucket
-                        ->get(Path::of($name))
+                        ->get($path)
                         ->match(
                             static fn($content) => $content->toString(),
                             static fn() => null,
                         ),
                 );
-                $this->assertNull($this->bucket->delete(Path::of($name)));
+                $this->assertNull($this->bucket->delete($path));
+                $this->assertFalse($this->bucket->contains($path));
                 $this->assertNull(
                     $this
                         ->bucket
-                        ->get(Path::of($name))
+                        ->get($path)
                         ->match(
                             static fn($content) => $content->toString(),
                             static fn() => null,
@@ -190,5 +195,21 @@ class HttpTest extends TestCase
         $this->expectException(LogicException::class);
 
         $this->bucket->list(Path::of('foo'));
+    }
+
+    public function testContainsDirectory()
+    {
+        $this
+            ->forAll(Set\Unicode::strings())
+            ->then(function($content) {
+                $this->bucket->upload(
+                    Path::of('l1/l2/file1.txt'),
+                    Content\Lines::ofContent($content),
+                );
+
+                $this->assertTrue($this->bucket->contains(Path::of('l1/')));
+                $this->assertTrue($this->bucket->contains(Path::of('l1/l2/')));
+                $this->assertNull($this->bucket->delete(Path::of('l1/')));
+            });
     }
 }

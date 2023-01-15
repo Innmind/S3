@@ -107,6 +107,14 @@ final class Http implements Bucket
      */
     public function contains(Path $path): bool
     {
+        if ($path->directory()) {
+            return !$this->list($path)->empty();
+        }
+
+        return $this->get($path)->match(
+            static fn() => true,
+            static fn() => false,
+        );
     }
 
     /**
