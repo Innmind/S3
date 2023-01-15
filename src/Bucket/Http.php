@@ -96,6 +96,10 @@ final class Http implements Bucket
      */
     public function delete(Path $path): void
     {
+        $_ = ($this->fulfill)($this->request(Method::delete, $path))->match(
+            static fn() => null,
+            static fn() => throw new \RuntimeException,
+        );
     }
 
     /**

@@ -105,6 +105,16 @@ class HttpTest extends TestCase
                             static fn() => null,
                         ),
                 );
+                $this->assertNull($this->bucket->delete(Path::of($name)));
+                $this->assertNull(
+                    $this
+                        ->bucket
+                        ->get(Path::of($name))
+                        ->match(
+                            static fn($content) => $content->toString(),
+                            static fn() => null,
+                        ),
+                );
             });
     }
 
@@ -142,6 +152,7 @@ class HttpTest extends TestCase
                         ->map(static fn($path) => $path->toString())
                         ->toList(),
                 );
+                $this->assertNull($this->bucket->delete(Path::of('l1/')));
             });
     }
 
@@ -170,6 +181,7 @@ class HttpTest extends TestCase
                         ->map(static fn($path) => $path->toString())
                         ->toList(),
                 );
+                $this->assertNull($this->bucket->delete(Path::of('l1/')));
             });
     }
 
