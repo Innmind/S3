@@ -8,6 +8,7 @@ use Innmind\Filesystem\File\Content;
 use Innmind\Immutable\{
     Set,
     Maybe,
+    SideEffect,
 };
 
 interface Bucket
@@ -22,14 +23,16 @@ interface Bucket
     /**
      * Path must be relative
      *
-     * @throws Exception\FailedToUploadContent
+     * @return Maybe<SideEffect>
      */
-    public function upload(Path $path, Content $content): void;
+    public function upload(Path $path, Content $content): Maybe;
 
     /**
      * Path must be relative
+     *
+     * @return Maybe<SideEffect>
      */
-    public function delete(Path $path): void;
+    public function delete(Path $path): Maybe;
 
     /**
      * Path must be relative

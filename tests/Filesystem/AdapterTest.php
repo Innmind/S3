@@ -18,6 +18,7 @@ use Innmind\Url\Path;
 use Innmind\Immutable\{
     Set,
     Maybe,
+    SideEffect,
 };
 use PHPUnit\Framework\TestCase;
 use Innmind\BlackBox\{
@@ -49,7 +50,8 @@ class AdapterTest extends TestCase
             ->with(
                 Path::of('foo.pdf'),
                 $content,
-            );
+            )
+            ->willReturn(Maybe::just(new SideEffect));
 
         $this->assertNull(
             $filesystem->add(File\File::named('foo.pdf', $content)),
@@ -69,7 +71,8 @@ class AdapterTest extends TestCase
             ->withConsecutive(
                 [Path::of('dir/sub/foo.pdf'), $content1],
                 [Path::of('dir/sub/bar.pdf'), $content2],
-            );
+            )
+            ->willReturn(Maybe::just(new SideEffect));
 
         $this->assertNull(
             $filesystem->add(Directory::named('dir')->add(
@@ -206,7 +209,8 @@ class AdapterTest extends TestCase
         $bucket
             ->expects($this->once())
             ->method('delete')
-            ->with(Path::of('foo.pdf'));
+            ->with(Path::of('foo.pdf'))
+            ->willReturn(Maybe::just(new SideEffect));
 
         $this->assertNull($filesystem->remove(new Name('foo.pdf')));
     }

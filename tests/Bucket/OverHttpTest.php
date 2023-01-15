@@ -17,6 +17,7 @@ use Innmind\Url\{
     Url,
     Path,
 };
+use Innmind\Immutable\SideEffect;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
 use PHPUnit\Framework\TestCase;
@@ -94,10 +95,19 @@ class OverHttpTest extends TestCase
                 $path = Path::of($name);
 
                 $this->assertFalse($this->bucket->contains($path));
-                $this->assertNull($this->bucket->upload(
-                    $path,
-                    Content\Lines::ofContent($content),
-                ));
+                $this->assertInstanceOf(
+                    SideEffect::class,
+                    $this
+                        ->bucket
+                        ->upload(
+                            $path,
+                            Content\Lines::ofContent($content),
+                        )
+                        ->match(
+                            static fn($sideEffect) => $sideEffect,
+                            static fn() => null,
+                        ),
+                );
                 $this->assertTrue($this->bucket->contains($path));
                 $this->assertSame(
                     $content,
@@ -109,7 +119,16 @@ class OverHttpTest extends TestCase
                             static fn() => null,
                         ),
                 );
-                $this->assertNull($this->bucket->delete($path));
+                $this->assertInstanceOf(
+                    SideEffect::class,
+                    $this
+                        ->bucket
+                        ->delete($path)
+                        ->match(
+                            static fn($sideEffect) => $sideEffect,
+                            static fn() => null,
+                        ),
+                );
                 $this->assertFalse($this->bucket->contains($path));
                 $this->assertNull(
                     $this
@@ -157,7 +176,16 @@ class OverHttpTest extends TestCase
                         ->map(static fn($path) => $path->toString())
                         ->toList(),
                 );
-                $this->assertNull($this->bucket->delete(Path::of('l1/')));
+                $this->assertInstanceOf(
+                    SideEffect::class,
+                    $this
+                        ->bucket
+                        ->delete(Path::of('l1/'))
+                        ->match(
+                            static fn($sideEffect) => $sideEffect,
+                            static fn() => null,
+                        ),
+                );
             });
     }
 
@@ -186,7 +214,16 @@ class OverHttpTest extends TestCase
                         ->map(static fn($path) => $path->toString())
                         ->toList(),
                 );
-                $this->assertNull($this->bucket->delete(Path::of('l1/')));
+                $this->assertInstanceOf(
+                    SideEffect::class,
+                    $this
+                        ->bucket
+                        ->delete(Path::of('l1/'))
+                        ->match(
+                            static fn($sideEffect) => $sideEffect,
+                            static fn() => null,
+                        ),
+                );
             });
     }
 
@@ -209,7 +246,16 @@ class OverHttpTest extends TestCase
 
                 $this->assertTrue($this->bucket->contains(Path::of('l1/')));
                 $this->assertTrue($this->bucket->contains(Path::of('l1/l2/')));
-                $this->assertNull($this->bucket->delete(Path::of('l1/')));
+                $this->assertInstanceOf(
+                    SideEffect::class,
+                    $this
+                        ->bucket
+                        ->delete(Path::of('l1/'))
+                        ->match(
+                            static fn($sideEffect) => $sideEffect,
+                            static fn() => null,
+                        ),
+                );
             });
     }
 }

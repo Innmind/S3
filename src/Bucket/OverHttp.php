@@ -8,7 +8,6 @@ use Innmind\S3\{
     Region,
     Format\AmazonDate,
     Format\AmazonTime,
-    Exception\FailedToUploadContent,
     Exception\LogicException,
 };
 use Innmind\Url\{
@@ -40,6 +39,7 @@ use Innmind\Immutable\{
     Str,
     Set,
     Maybe,
+    SideEffect,
     Predicate\Instance,
 };
 
@@ -94,23 +94,21 @@ final class OverHttp implements Bucket
     /**
      * Path must be relative
      */
-    public function upload(Path $path, Content $content): void
+    public function upload(Path $path, Content $content): Maybe
     {
-        ($this->fulfill)($this->request(Method::put, $path, $content))->match(
-            static fn() => null,
-            static fn() => throw new FailedToUploadContent,
-        );
+        return ($this->fulfill)($this->request(Method::put, $path, $content))
+            ->maybe()
+            ->map(static fn() => new SideEffect);
     }
 
     /**
      * Path must be relative
      */
-    public function delete(Path $path): void
+    public function delete(Path $path): Maybe
     {
-        $_ = ($this->fulfill)($this->request(Method::delete, $path))->match(
-            static fn() => null,
-            static fn() => throw new \RuntimeException,
-        );
+        return ($this->fulfill)($this->request(Method::delete, $path))
+            ->maybe()
+            ->map(static fn() => new SideEffect);
     }
 
     /**
