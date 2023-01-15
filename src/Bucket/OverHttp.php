@@ -75,11 +75,6 @@ final class OverHttp implements Bucket
         return new self($fulfill, $clock, $reader, $bucket, $region);
     }
 
-    /**
-     * Path must be relative
-     *
-     * @return Maybe<Content>
-     */
     public function get(Path $path): Maybe
     {
         if ($path->directory()) {
@@ -91,9 +86,6 @@ final class OverHttp implements Bucket
             ->map(static fn($success) => $success->response()->body());
     }
 
-    /**
-     * Path must be relative
-     */
     public function upload(Path $path, Content $content): Maybe
     {
         return ($this->fulfill)($this->request(Method::put, $path, $content))
@@ -101,9 +93,6 @@ final class OverHttp implements Bucket
             ->map(static fn() => new SideEffect);
     }
 
-    /**
-     * Path must be relative
-     */
     public function delete(Path $path): Maybe
     {
         return ($this->fulfill)($this->request(Method::delete, $path))
@@ -111,9 +100,6 @@ final class OverHttp implements Bucket
             ->map(static fn() => new SideEffect);
     }
 
-    /**
-     * Path must be relative
-     */
     public function contains(Path $path): bool
     {
         if ($path->directory()) {
@@ -126,11 +112,6 @@ final class OverHttp implements Bucket
         );
     }
 
-    /**
-     * Path must be relative or Path::none() to list the root of the bucket
-     *
-     * @return Set<Path> Paths are relative to $path
-     */
     public function list(Path $path): Set
     {
         if (!$path->directory()) {
