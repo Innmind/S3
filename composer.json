@@ -24,7 +24,8 @@
         "innmind/filesystem": "~6.1",
         "innmind/http-transport": "~6.2",
         "innmind/time-continuum": "~3.1",
-        "innmind/hash": "^1.1"
+        "innmind/hash": "^1.1",
+        "innmind/xml": "^7.2"
     },
     "autoload": {
         "psr-4": {

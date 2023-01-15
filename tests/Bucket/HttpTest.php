@@ -12,6 +12,7 @@ use Innmind\S3\{
 use Innmind\HttpTransport\Curl;
 use Innmind\TimeContinuum\Earth\Clock;
 use Innmind\Filesystem\File\Content;
+use Innmind\Xml\Reader\Reader;
 use Innmind\Url\{
     Url,
     Path,
@@ -68,6 +69,7 @@ class HttpTest extends TestCase
         $this->bucket = new Http(
             Curl::of($clock = new Clock),
             $clock,
+            Reader::of(),
             Url::of('http://S3RVER:S3RVER@localhost:4568/my-bucket/'),
             new Region('doesnt-matter-here'),
         );
@@ -111,5 +113,70 @@ class HttpTest extends TestCase
         $this->expectException(LogicException::class);
 
         $this->bucket->get(Path::of('foo/'));
+    }
+
+    public function testListFilesInADirectory()
+    {
+        $this
+            ->forAll(
+                Set\Unicode::strings(),
+                Set\Unicode::strings(),
+            )
+            ->take(1)
+            ->disableShrinking()
+            ->then(function($content1, $content2) {
+                $this->bucket->upload(
+                    Path::of('l1/l2/file1.txt'),
+                    Content\Lines::ofContent($content1),
+                );
+                $this->bucket->upload(
+                    Path::of('l1/file2.txt'),
+                    Content\Lines::ofContent($content2),
+                );
+
+                $this->assertSame(
+                    ['file2.txt', 'l2/'],
+                    $this
+                        ->bucket
+                        ->list(Path::of('l1/'))
+                        ->map(static fn($path) => $path->toString())
+                        ->toList(),
+                );
+            });
+    }
+
+    public function testListFilesInRootDirectory()
+    {
+        $this
+            ->forAll(
+                Set\Unicode::strings(),
+                Set\Unicode::strings(),
+            )
+            ->then(function($content1, $content2) {
+                $this->bucket->upload(
+                    Path::of('l1/l2/file1.txt'),
+                    Content\Lines::ofContent($content1),
+                );
+                $this->bucket->upload(
+                    Path::of('l1/file2.txt'),
+                    Content\Lines::ofContent($content2),
+                );
+
+                $this->assertSame(
+                    ['l1/'],
+                    $this
+                        ->bucket
+                        ->list(Path::none())
+                        ->map(static fn($path) => $path->toString())
+                        ->toList(),
+                );
+            });
+    }
+
+    public function testPreventFromListingNonDirectory()
+    {
+        $this->expectException(LogicException::class);
+
+        $this->bucket->list(Path::of('foo'));
     }
 }

@@ -12,6 +12,7 @@ use Innmind\S3\{
 use Innmind\Url\{
     Url,
     Path,
+    Query,
 };
 use Innmind\HttpTransport\Transport;
 use Innmind\Filesystem\File\Content;
@@ -29,26 +30,36 @@ use Innmind\Http\{
     Header\Value\Value,
 };
 use Innmind\Hash\Hash;
+use Innmind\Xml\{
+    Reader,
+    Element,
+    Node\Document,
+};
 use Innmind\Immutable\{
+    Str,
     Set,
     Maybe,
+    Predicate\Instance,
 };
 
 final class Http implements Bucket
 {
     private Transport $fulfill;
     private Clock $clock;
+    private Reader $read;
     private Url $bucket;
     private Region $region;
 
     public function __construct(
         Transport $fulfill,
         Clock $clock,
+        Reader $reader,
         Url $bucket,
         Region $region,
     ) {
         $this->fulfill = $fulfill;
         $this->clock = $clock;
+        $this->read = $reader;
         $this->bucket = $bucket;
         $this->region = $region;
     }
@@ -101,7 +112,64 @@ final class Http implements Bucket
      */
     public function list(Path $path): Set
     {
-        return Set::of();
+        if (!$path->directory()) {
+            throw new LogicException("Only a directory can be listed, got '{$path->toString()}'");
+        }
+
+        if ($path->equals(Path::none())) {
+            $query = Query::of('list-type=2&delimiter=/');
+            $prefixLength = 0;
+        } else {
+            $query = Query::of('list-type=2&delimiter=/&prefix='.$path->toString());
+            $prefixLength = Str::of($path->toString())->length();
+        }
+
+        return ($this->fulfill)($this->request(
+            Method::get,
+            $this->bucket->path(),
+            null,
+            $query,
+        ))
+            ->maybe()
+            ->map(static fn($success) => $success->response()->body())
+            ->flatMap($this->read)
+            ->keep(Instance::of(Document::class))
+            ->flatMap(static fn($document) => $document->children()->first())
+            ->map(static fn($list) => $list->children()->keep(Instance::of(Element::class)))
+            ->map(
+                static fn($elements) => $elements
+                    ->filter(static fn($element) => $element->name() === 'Contents')
+                    ->flatMap(
+                        static fn($content) => $content
+                            ->children()
+                            ->keep(Instance::of(Element::class))
+                            ->filter(static fn($attribute) => $attribute->name() === 'Key')
+                            ->map(static fn($attribute) => $attribute->content()),
+                    )
+                    ->append(
+                        $elements
+                            ->filter(static fn($element) => $element->name() === 'CommonPrefixes')
+                            ->flatMap(static fn($prefixes) => $prefixes->children())
+                            ->keep(Instance::of(Element::class))
+                            ->filter(static fn($element) => $element->name() === 'Prefix')
+                            ->map(static fn($prefix) => $prefix->content()),
+                    ),
+            )
+            ->map(
+                static fn($paths) => $paths
+                    ->map(Str::of(...))
+                    ->map(
+                        static fn($found) => $found
+                            ->trim()
+                            ->drop($prefixLength)
+                            ->toString(),
+                    )
+                    ->map(Path::of(...)),
+            )
+            ->match(
+                static fn($paths) => Set::of(...$paths->toList()),
+                static fn() => Set::of(),
+            );
     }
 
     /**
@@ -113,12 +181,18 @@ final class Http implements Bucket
         Method $method,
         Path $path,
         Content $content = null,
+        Query $query = null,
     ): Request {
         $now = $this->clock->now()->changeTimezone(new UTC);
         $url = $this
             ->bucket
             ->withAuthority($this->bucket->authority()->withoutUserInformation())
             ->withPath($this->bucket->path()->resolve($path));
+
+        if ($query instanceof Query) {
+            $url = $url->withQuery($query);
+        }
+
         $amazonDate = $now->format(new class implements Format {
             public function toString(): string
             {
