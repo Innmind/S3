@@ -5,3 +5,7 @@
 ### Added
 
 - Support for `innmind/http:~6.0`
+
+### Removed
+
+- Direct dependency to `innmind/stream`
