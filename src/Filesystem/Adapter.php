@@ -83,7 +83,7 @@ final class Adapter implements AdapterInterface
     private function upload(Path $root, File $file): void
     {
         if ($file instanceof Directory) {
-            $file->foreach(
+            $_ = $file->foreach(
                 fn(File $subFile) => $this->upload($this->resolve($root, $file), $subFile),
             );
 
