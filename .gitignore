@@ -4,3 +4,4 @@ vendor/
 tests/node_modules
 !fixtures/.gitkeep
 fixtures/*
+.phpunit.cache

@@ -67,13 +67,21 @@ class AdapterTest extends TestCase
         $content1 = $this->createMock(Content::class);
         $content2 = $this->createMock(Content::class);
         $bucket
-            ->expects($this->exactly(2))
+            ->expects($matcher = $this->exactly(2))
             ->method('upload')
-            ->withConsecutive(
-                [Path::of('dir/sub/foo.pdf'), $content1],
-                [Path::of('dir/sub/bar.pdf'), $content2],
-            )
-            ->willReturn(Maybe::just(new SideEffect));
+
+            ->willReturnCallback(function($path, $content) use ($matcher, $content1, $content2) {
+                match ($matcher->numberOfInvocations()) {
+                    1 => $this->assertEquals(Path::of('dir/sub/foo.pdf'), $path),
+                    2 => $this->assertEquals(Path::of('dir/sub/bar.pdf'), $path),
+                };
+                match ($matcher->numberOfInvocations()) {
+                    1 => $this->assertSame($content1, $content),
+                    2 => $this->assertSame($content2, $content),
+                };
+
+                return Maybe::just(new SideEffect);
+            });
 
         $this->assertNull(
             $filesystem->add(Directory::named('dir')->add(
@@ -143,16 +151,19 @@ class AdapterTest extends TestCase
             ->with(Path::of('foo/'))
             ->willReturn(true);
         $bucket
-            ->expects($this->exactly(2))
+            ->expects($matcher = $this->exactly(2))
             ->method('list')
-            ->withConsecutive(
-                [Path::of('foo/')],
-                [Path::of('foo/bar/')],
-            )
-            ->will($this->onConsecutiveCalls(
-                Sequence::of(Path::of('bar/')),
-                Sequence::of(Path::of('baz.txt')),
-            ));
+            ->willReturnCallback(function($path) use ($matcher) {
+                match ($matcher->numberOfInvocations()) {
+                    1 => $this->assertEquals(Path::of('foo/'), $path),
+                    2 => $this->assertEquals(Path::of('foo/bar/'), $path),
+                };
+
+                return match ($matcher->numberOfInvocations()) {
+                    1 => Sequence::of(Path::of('bar/')),
+                    2 => Sequence::of(Path::of('baz.txt')),
+                };
+            });
         $bucket
             ->expects($this->once())
             ->method('get')
@@ -227,13 +238,16 @@ class AdapterTest extends TestCase
             ->with(Path::none())
             ->willReturn(Sequence::of(Path::of('foo'), Path::of('bar')));
         $bucket
-            ->expects($this->exactly(2))
+            ->expects($matcher = $this->exactly(2))
             ->method('get')
-            ->withConsecutive([Path::of('foo')], [Path::of('bar')])
-            ->willReturnOnConsecutiveCalls(
-                Maybe::just($this->createMock(Content::class)),
-                Maybe::just($this->createMock(Content::class)),
-            );
+            ->willReturnCallback(function($path) use ($matcher) {
+                match ($matcher->numberOfInvocations()) {
+                    1 => $this->assertEquals(Path::of('foo'), $path),
+                    2 => $this->assertEquals(Path::of('bar'), $path),
+                };
+
+                return Maybe::just($this->createMock(Content::class));
+            });
 
         $files = $filesystem->all();
 
