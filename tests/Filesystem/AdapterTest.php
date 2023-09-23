@@ -155,7 +155,7 @@ class AdapterTest extends TestCase
             ->method('list')
             ->willReturnCallback(function($path) use ($matcher) {
                 match ($matcher->numberOfInvocations()) {
-                    1 => $this->assertEquals(Path::of('foo'), $path),
+                    1 => $this->assertEquals(Path::of('foo/'), $path),
                     2 => $this->assertEquals(Path::of('foo/bar/'), $path),
                 };
 

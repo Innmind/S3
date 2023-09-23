@@ -158,10 +158,16 @@ class OverHttpTest extends TestCase
                 $this->bucket->upload(
                     Path::of('l1/l2/file1.txt'),
                     Content\Lines::ofContent($content1),
+                )->match(
+                    static fn() => null,
+                    static fn() => null,
                 );
                 $this->bucket->upload(
                     Path::of('l1/file2.txt'),
                     Content\Lines::ofContent($content2),
+                )->match(
+                    static fn() => null,
+                    static fn() => null,
                 );
 
                 $this->assertSame(
@@ -196,10 +202,16 @@ class OverHttpTest extends TestCase
                 $this->bucket->upload(
                     Path::of('l1/l2/file1.txt'),
                     Content\Lines::ofContent($content1),
+                )->match(
+                    static fn() => null,
+                    static fn() => null,
                 );
                 $this->bucket->upload(
                     Path::of('l1/file2.txt'),
                     Content\Lines::ofContent($content2),
+                )->match(
+                    static fn() => null,
+                    static fn() => null,
                 );
 
                 $this->assertSame(
@@ -238,6 +250,9 @@ class OverHttpTest extends TestCase
                 $this->bucket->upload(
                     Path::of('l1/l2/file1.txt'),
                     Content\Lines::ofContent($content),
+                )->match(
+                    static fn() => null,
+                    static fn() => null,
                 );
 
                 $this->assertTrue($this->bucket->contains(Path::of('l1/')));
