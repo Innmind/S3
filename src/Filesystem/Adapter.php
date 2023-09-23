@@ -64,7 +64,15 @@ final class Adapter implements AdapterInterface
 
     public function remove(Name $file): void
     {
-        $this->bucket->delete(Path::of($file->toString()));
+        // the ->match() is here to force unwrap the monad to make sure the
+        // underlying operation is executed
+        $_ = $this
+            ->bucket
+            ->delete(Path::of($file->toString()))
+            ->match(
+                static fn() => null,
+                static fn() => null,
+            );
     }
 
     public function all(): Set
@@ -90,10 +98,17 @@ final class Adapter implements AdapterInterface
             return;
         }
 
-        $this->bucket->upload(
-            $this->resolve($root, $file),
-            $file->content(),
-        );
+        // the ->match() is here to force unwrap the monad to make sure the
+        // underlying operation is executed
+        $_ = $this
+            ->bucket
+            ->upload(
+                $this->resolve($root, $file),
+                $file->content(),
+            )->match(
+                static fn() => null,
+                static fn() => null,
+            );
     }
 
     private function resolve(Path $root, File $file): Path

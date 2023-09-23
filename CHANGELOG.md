@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.2.1 - 2023-09-23
+
+### Fixed
+
+- Upload and removals not being executed with the deferred execution inside `innmind/http-transport`
+
 ## 3.2.0 - 2023-09-23
 
 ### Added
