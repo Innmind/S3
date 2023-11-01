@@ -19,7 +19,7 @@
         "innmind/url": "~4.1",
         "innmind/immutable": "~4.15|~5.0",
         "innmind/http": "~7.0",
-        "innmind/filesystem": "~7.1",
+        "innmind/filesystem": "~7.2",
         "innmind/http-transport": "~7.0",
         "innmind/time-continuum": "~3.1",
         "innmind/hash": "^1.1",

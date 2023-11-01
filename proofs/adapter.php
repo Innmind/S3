@@ -8,6 +8,7 @@ use Innmind\S3\{
 };
 use Innmind\OperatingSystem\Factory;
 use Innmind\Url\Url;
+use Innmind\Immutable\Sequence;
 use Properties\Innmind\Filesystem\Adapter;
 use Innmind\BlackBox\Set;
 use Symfony\Component\Filesystem\Filesystem as FS;
@@ -34,13 +35,18 @@ return static function() {
 
     yield properties(
         'S3',
-        Adapter::properties()->filter(
-            static fn($all) => !\in_array(
-                Adapter\AddEmptyDirectory::class,
-                \array_map(static fn($property) => $property::class, $all->properties()),
-                true,
+        Adapter::properties()
+            ->filter(
+                static fn($all) => !Sequence::of(...$all->properties())
+                    ->map(static fn($property) => $property::class)
+                    ->any(static fn($property) => $property === Adapter\AddEmptyDirectory::class),
+            )
+            ->filter(
+                static fn($all) => Sequence::of(...$all->properties())
+                    ->filter(static fn($property) => $property instanceof Adapter\AddDirectory)
+                    ->filter(static fn($property) => $property->directory()->all()->empty())
+                    ->empty(),
             ),
-        ),
         Set\Call::of(fn() => Filesystem\Adapter::of(
             S3Factory::of(Factory::build())->build(
                 Url::of('http://S3RVER:S3RVER@localhost:4568/my-bucket/'),
