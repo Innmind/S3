@@ -58,3 +58,6 @@ $data
         static fn() => null, // do something if there is no images
     );
 ```
+
+> **Note**
+> Adding empty directories do not create empty directories in S3
