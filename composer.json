@@ -17,14 +17,14 @@
     "require": {
         "php": "~8.2",
         "innmind/url": "~4.1",
-        "innmind/immutable": "~4.9|~5.0",
-        "innmind/http": "~5.3|~6.0",
-        "innmind/filesystem": "~6.1",
-        "innmind/http-transport": "^6.2.1",
+        "innmind/immutable": "~4.15|~5.0",
+        "innmind/http": "~7.0",
+        "innmind/filesystem": "~7.2",
+        "innmind/http-transport": "~7.0",
         "innmind/time-continuum": "~3.1",
         "innmind/hash": "^1.1",
         "innmind/xml": "^7.2",
-        "innmind/operating-system": "^3.4"
+        "innmind/operating-system": "~4.0"
     },
     "autoload": {
         "psr-4": {

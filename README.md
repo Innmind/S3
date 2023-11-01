@@ -26,7 +26,7 @@ use Innmind\Url\{
     Path,
 };
 
-$os = Factory::build();
+$os = OSFactory::build();
 
 $bucket = Factory::of($os)->build(
     Url::of('https://acces_key:acces_secret@bucket-name.s3.region-name.scw.cloud/'),
@@ -58,3 +58,6 @@ $data
         static fn() => null, // do something if there is no images
     );
 ```
+
+> **Note**
+> Adding empty directories do not create empty directories in S3

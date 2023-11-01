@@ -10,13 +10,12 @@ use Innmind\S3\{
 use Innmind\Filesystem\{
     Adapter as AdapterInterface,
     File,
+    File\Content,
     Name,
-    Directory\Directory,
+    Directory,
 };
-use Innmind\Filesystem\File\Content;
 use Innmind\Url\Path;
 use Innmind\Immutable\{
-    Set,
     Sequence,
     Maybe,
     SideEffect,
@@ -24,7 +23,7 @@ use Innmind\Immutable\{
 use PHPUnit\Framework\TestCase;
 use Innmind\BlackBox\{
     PHPUnit\BlackBox,
-    Set as DataSet,
+    Set,
 };
 
 class AdapterTest extends TestCase
@@ -44,7 +43,7 @@ class AdapterTest extends TestCase
         $filesystem = Adapter::of(
             $bucket = $this->createMock(Bucket::class),
         );
-        $content = $this->createMock(Content::class);
+        $content = Content::none();
         $bucket
             ->expects($this->once())
             ->method('upload')
@@ -55,7 +54,7 @@ class AdapterTest extends TestCase
             ->willReturn(Maybe::just(new SideEffect));
 
         $this->assertNull(
-            $filesystem->add(File\File::named('foo.pdf', $content)),
+            $filesystem->add(File::named('foo.pdf', $content)),
         );
     }
 
@@ -64,8 +63,8 @@ class AdapterTest extends TestCase
         $filesystem = Adapter::of(
             $bucket = $this->createMock(Bucket::class),
         );
-        $content1 = $this->createMock(Content::class);
-        $content2 = $this->createMock(Content::class);
+        $content1 = Content::none();
+        $content2 = Content::none();
         $bucket
             ->expects($matcher = $this->exactly(2))
             ->method('upload')
@@ -86,8 +85,8 @@ class AdapterTest extends TestCase
         $this->assertNull(
             $filesystem->add(Directory::named('dir')->add(
                 Directory::named('sub')
-                    ->add(File\File::named('foo.pdf', $content1))
-                    ->add(File\File::named('bar.pdf', $content2)),
+                    ->add(File::named('foo.pdf', $content1))
+                    ->add(File::named('bar.pdf', $content2)),
             )),
         );
     }
@@ -106,9 +105,9 @@ class AdapterTest extends TestCase
             ->expects($this->once())
             ->method('get')
             ->with(Path::of('foo.pdf'))
-            ->willReturn(Maybe::just($content = $this->createMock(Content::class)));
+            ->willReturn(Maybe::just($content = Content::none()));
 
-        $file = $filesystem->get(new Name('foo.pdf'))->match(
+        $file = $filesystem->get(Name::of('foo.pdf'))->match(
             static fn($file) => $file,
             static fn() => null,
         );
@@ -134,7 +133,7 @@ class AdapterTest extends TestCase
             ->with(Path::of('foo.pdf'))
             ->willReturn(Maybe::nothing());
 
-        $this->assertNull($filesystem->get(new Name('foo.pdf'))->match(
+        $this->assertNull($filesystem->get(Name::of('foo.pdf'))->match(
             static fn($file) => $file,
             static fn() => null,
         ));
@@ -168,25 +167,25 @@ class AdapterTest extends TestCase
             ->expects($this->once())
             ->method('get')
             ->with(Path::of('foo/bar/baz.txt'))
-            ->willReturn(Maybe::just($content = $this->createMock(Content::class)));
+            ->willReturn(Maybe::just($content = Content::none()));
 
-        $directory = $filesystem->get(new Name('foo'))->match(
+        $directory = $filesystem->get(Name::of('foo'))->match(
             static fn($directory) => $directory,
             static fn() => null,
         );
 
         $this->assertInstanceOf(Directory::class, $directory);
         $this->assertSame('foo', $directory->name()->toString());
-        $this->assertFalse($directory->contains(new Name('baz.txt')));
-        $this->assertTrue($directory->contains(new Name('bar')));
-        $bar = $directory->get(new Name('bar'))->match(
+        $this->assertFalse($directory->contains(Name::of('baz.txt')));
+        $this->assertTrue($directory->contains(Name::of('bar')));
+        $bar = $directory->get(Name::of('bar'))->match(
             static fn($directory) => $directory,
             static fn() => null,
         );
         $this->assertInstanceOf(Directory::class, $bar);
         $this->assertSame('bar', $bar->name()->toString());
-        $this->assertTrue($bar->contains(new Name('baz.txt')));
-        $baz = $bar->get(new Name('baz.txt'))->match(
+        $this->assertTrue($bar->contains(Name::of('baz.txt')));
+        $baz = $bar->get(Name::of('baz.txt'))->match(
             static fn($file) => $file,
             static fn() => null,
         );
@@ -197,20 +196,26 @@ class AdapterTest extends TestCase
 
     public function testContains()
     {
-        $this
-            ->forAll(DataSet\Elements::of(true, false))
-            ->then(function($exist) {
-                $filesystem = Adapter::of(
-                    $bucket = $this->createMock(Bucket::class),
-                );
-                $bucket
-                    ->expects($this->once())
-                    ->method('contains')
-                    ->with(Path::of('foo.pdf'))
-                    ->willReturn($exist);
+        $filesystem = Adapter::of(
+            $bucket = $this->createMock(Bucket::class),
+        );
+        $bucket
+            ->expects($this->once())
+            ->method('contains')
+            ->with(Path::of('foo.pdf'))
+            ->willReturn(true);
 
-                $this->assertSame($exist, $filesystem->contains(new Name('foo.pdf')));
-            });
+        $this->assertTrue($filesystem->contains(Name::of('foo.pdf')));
+
+        $filesystem = Adapter::of(
+            $bucket = $this->createMock(Bucket::class),
+        );
+        $bucket
+            ->expects($this->exactly(2))
+            ->method('contains')
+            ->willReturnOnConsecutiveCalls(false, true);
+
+        $this->assertTrue($filesystem->contains(Name::of('foo.pdf')));
     }
 
     public function testRemove()
@@ -224,7 +229,7 @@ class AdapterTest extends TestCase
             ->with(Path::of('foo.pdf'))
             ->willReturn(Maybe::just(new SideEffect));
 
-        $this->assertNull($filesystem->remove(new Name('foo.pdf')));
+        $this->assertNull($filesystem->remove(Name::of('foo.pdf')));
     }
 
     public function testFilesListOfFilesystemAlwaysEmpty()
@@ -246,12 +251,12 @@ class AdapterTest extends TestCase
                     2 => $this->assertEquals(Path::of('bar'), $path),
                 };
 
-                return Maybe::just($this->createMock(Content::class));
+                return Maybe::just(Content::none());
             });
 
-        $files = $filesystem->all();
+        $files = $filesystem->root()->all();
 
-        $this->assertInstanceOf(Set::class, $files);
+        $this->assertInstanceOf(Sequence::class, $files);
         $this->assertCount(2, $files);
     }
 }

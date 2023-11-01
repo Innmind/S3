@@ -97,7 +97,7 @@ class OverHttpTest extends TestCase
                         ->bucket
                         ->upload(
                             $path,
-                            Content\Lines::ofContent($content),
+                            Content::ofString($content),
                         )
                         ->match(
                             static fn($sideEffect) => $sideEffect,
@@ -157,14 +157,14 @@ class OverHttpTest extends TestCase
             ->then(function($content1, $content2) {
                 $this->bucket->upload(
                     Path::of('l1/l2/file1.txt'),
-                    Content\Lines::ofContent($content1),
+                    Content::ofString($content1),
                 )->match(
                     static fn() => null,
                     static fn() => null,
                 );
                 $this->bucket->upload(
                     Path::of('l1/file2.txt'),
-                    Content\Lines::ofContent($content2),
+                    Content::ofString($content2),
                 )->match(
                     static fn() => null,
                     static fn() => null,
@@ -201,14 +201,14 @@ class OverHttpTest extends TestCase
             ->then(function($content1, $content2) {
                 $this->bucket->upload(
                     Path::of('l1/l2/file1.txt'),
-                    Content\Lines::ofContent($content1),
+                    Content::ofString($content1),
                 )->match(
                     static fn() => null,
                     static fn() => null,
                 );
                 $this->bucket->upload(
                     Path::of('l1/file2.txt'),
-                    Content\Lines::ofContent($content2),
+                    Content::ofString($content2),
                 )->match(
                     static fn() => null,
                     static fn() => null,
@@ -249,7 +249,7 @@ class OverHttpTest extends TestCase
             ->then(function($content) {
                 $this->bucket->upload(
                     Path::of('l1/l2/file1.txt'),
-                    Content\Lines::ofContent($content),
+                    Content::ofString($content),
                 )->match(
                     static fn() => null,
                     static fn() => null,

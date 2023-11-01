@@ -3,10 +3,14 @@ declare(strict_types = 1);
 
 namespace Innmind\S3\Filesystem;
 
-use Innmind\S3\Bucket;
+use Innmind\S3\{
+    Bucket,
+    Exception\RuntimeException,
+};
 use Innmind\Filesystem\{
     Adapter as AdapterInterface,
     File,
+    File\Content,
     Directory,
     Name,
 };
@@ -32,7 +36,7 @@ final class Adapter implements AdapterInterface
         return new self($bucket);
     }
 
-    public function add(File $file): void
+    public function add(File|Directory $file): void
     {
         $this->upload(Path::none(), $file);
     }
@@ -41,7 +45,7 @@ final class Adapter implements AdapterInterface
     {
         if ($this->bucket->contains(Path::of($file->toString().'/'))) {
             /** @var Maybe<File> */
-            return Maybe::just(Directory\Directory::of(
+            return Maybe::just(Directory::of(
                 $file,
                 $this->children(Path::of($file->toString().'/')),
             ));
@@ -51,7 +55,7 @@ final class Adapter implements AdapterInterface
         return $this
             ->bucket
             ->get(Path::of($file->toString()))
-            ->map(static fn($content) => new File\File(
+            ->map(static fn($content) => File::of(
                 $file,
                 $content,
             ));
@@ -59,7 +63,8 @@ final class Adapter implements AdapterInterface
 
     public function contains(Name $file): bool
     {
-        return $this->bucket->contains(Path::of($file->toString()));
+        return $this->bucket->contains(Path::of($file->toString())) ||
+            $this->bucket->contains(Path::of($file->toString().'/'));
     }
 
     public function remove(Name $file): void
@@ -71,47 +76,57 @@ final class Adapter implements AdapterInterface
             ->delete(Path::of($file->toString()))
             ->match(
                 static fn() => null,
-                static fn() => null,
+                static fn() => throw new RuntimeException("Failed to remove '{$file->toString()}'"),
             );
-    }
-
-    public function all(): Set
-    {
-        return Set::of(...$this->root()->files()->toList());
     }
 
     public function root(): Directory
     {
-        return Directory\Directory::of(
+        return Directory::of(
             Name::of('root'),
             $this->children(Path::none()),
         );
     }
 
-    private function upload(Path $root, File $file): void
+    private function upload(Path $root, File|Directory $file): void
     {
         if ($file instanceof Directory) {
-            $_ = $file->foreach(
-                fn(File $subFile) => $this->upload($this->resolve($root, $file), $subFile),
-            );
+            $path = $this->resolve($root, $file);
+            $persisted = $file
+                ->all()
+                ->map(function($file) use ($path) {
+                    $this->upload($path, $file);
+
+                    return $file;
+                })
+                ->map(static fn($file) => $file->name()->toString())
+                ->memoize()
+                ->toSet();
+            $_ = $file
+                ->removed()
+                ->filter(static fn($file) => !$persisted->contains($file->toString()))
+                ->foreach(fn($file) => $this->bucket->delete(
+                    $this->resolve($path, File::of($file, Content::none())), // wrap name as a file because we can't know if the name represent a file or name
+                ));
 
             return;
         }
 
+        $path = $this->resolve($root, $file);
         // the ->match() is here to force unwrap the monad to make sure the
         // underlying operation is executed
         $_ = $this
             ->bucket
             ->upload(
-                $this->resolve($root, $file),
+                $path,
                 $file->content(),
             )->match(
                 static fn() => null,
-                static fn() => null,
+                static fn() => throw new RuntimeException("Failed to upload '{$path->toString()}'"),
             );
     }
 
-    private function resolve(Path $root, File $file): Path
+    private function resolve(Path $root, File|Directory $file): Path
     {
         $name = $file->name()->toString();
 
@@ -129,7 +144,7 @@ final class Adapter implements AdapterInterface
     }
 
     /**
-     * @return Sequence<File>
+     * @return Sequence<File|Directory>
      */
     private function children(Path $folder): Sequence
     {
@@ -152,7 +167,7 @@ final class Adapter implements AdapterInterface
                          */
                         return Sequence::lazy(
                             function() use ($child, $path) {
-                                yield Directory\Directory::of(
+                                yield Directory::of(
                                     Name::of(Str::of($child->toString())->dropEnd(1)->toString()), // drop trailing '/'
                                     $this->children($path),
                                 );
@@ -164,14 +179,11 @@ final class Adapter implements AdapterInterface
                     return $this
                         ->bucket
                         ->get($path)
-                        ->map(static fn($content) => File\File::named(
+                        ->map(static fn($content) => File::named(
                             $child->toString(),
                             $content,
                         ))
-                        ->match(
-                            static fn($file) => Sequence::of($file),
-                            static fn() => Sequence::of(),
-                        );
+                        ->toSequence();
                 },
             );
     }
