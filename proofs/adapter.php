@@ -43,7 +43,10 @@ return static function() {
             )
             ->filter(
                 static fn($all) => Sequence::of(...$all->properties())
-                    ->filter(static fn($property) => $property instanceof Adapter\AddDirectory)
+                    ->filter(
+                        static fn($property) => $property instanceof Adapter\AddDirectory ||
+                            $property instanceof Adapter\RemoveAddRemoveModificationsDoesntAddTheFile,
+                    )
                     ->filter(static fn($property) => $property->directory()->all()->empty())
                     ->empty(),
             ),
