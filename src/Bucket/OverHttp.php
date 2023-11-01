@@ -22,8 +22,8 @@ use Innmind\TimeContinuum\{
     Earth\Timezone\UTC,
 };
 use Innmind\Http\{
-    Message\Request\Request,
-    Message\Method,
+    Request,
+    Method,
     ProtocolVersion,
     Headers,
     Header\Header,
@@ -198,7 +198,7 @@ final class OverHttp implements Bucket
         $amazonDate = $now->format(new AmazonDate);
         $amazonTime = $now->format(new AmazonTime);
         $contentHash = Hash::sha256
-            ->ofContent($content ?? Content\None::of())
+            ->ofContent($content ?? Content::none())
             ->hex();
         $headerNames = 'x-amz-content-sha256;x-amz-date';
         $headers = <<<HEADERS
@@ -259,7 +259,7 @@ final class OverHttp implements Bucket
             ->user()
             ->toString();
 
-        return new Request(
+        return Request::of(
             $url,
             $method,
             ProtocolVersion::v11,

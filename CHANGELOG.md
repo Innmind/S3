@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Requires `innmind/http-transport:~7.0`
+- Requires `innmind/http:~7.0`
+- Requires `innmind/filesystem:~7.1`
+- Requires `innmind/operating-system:~4.0`
+
 ## 3.2.1 - 2023-09-23
 
 ### Fixed

@@ -32,7 +32,7 @@ final class Adapter implements AdapterInterface
         return new self($bucket);
     }
 
-    public function add(File $file): void
+    public function add(File|Directory $file): void
     {
         $this->upload(Path::none(), $file);
     }
@@ -41,7 +41,7 @@ final class Adapter implements AdapterInterface
     {
         if ($this->bucket->contains(Path::of($file->toString().'/'))) {
             /** @var Maybe<File> */
-            return Maybe::just(Directory\Directory::of(
+            return Maybe::just(Directory::of(
                 $file,
                 $this->children(Path::of($file->toString().'/')),
             ));
@@ -51,7 +51,7 @@ final class Adapter implements AdapterInterface
         return $this
             ->bucket
             ->get(Path::of($file->toString()))
-            ->map(static fn($content) => new File\File(
+            ->map(static fn($content) => File::of(
                 $file,
                 $content,
             ));
@@ -75,24 +75,19 @@ final class Adapter implements AdapterInterface
             );
     }
 
-    public function all(): Set
-    {
-        return Set::of(...$this->root()->files()->toList());
-    }
-
     public function root(): Directory
     {
-        return Directory\Directory::of(
+        return Directory::of(
             Name::of('root'),
             $this->children(Path::none()),
         );
     }
 
-    private function upload(Path $root, File $file): void
+    private function upload(Path $root, File|Directory $file): void
     {
         if ($file instanceof Directory) {
             $_ = $file->foreach(
-                fn(File $subFile) => $this->upload($this->resolve($root, $file), $subFile),
+                fn($subFile) => $this->upload($this->resolve($root, $file), $subFile),
             );
 
             return;
@@ -111,7 +106,7 @@ final class Adapter implements AdapterInterface
             );
     }
 
-    private function resolve(Path $root, File $file): Path
+    private function resolve(Path $root, File|Directory $file): Path
     {
         $name = $file->name()->toString();
 
@@ -129,7 +124,7 @@ final class Adapter implements AdapterInterface
     }
 
     /**
-     * @return Sequence<File>
+     * @return Sequence<File|Directory>
      */
     private function children(Path $folder): Sequence
     {
@@ -152,7 +147,7 @@ final class Adapter implements AdapterInterface
                          */
                         return Sequence::lazy(
                             function() use ($child, $path) {
-                                yield Directory\Directory::of(
+                                yield Directory::of(
                                     Name::of(Str::of($child->toString())->dropEnd(1)->toString()), // drop trailing '/'
                                     $this->children($path),
                                 );
@@ -164,14 +159,11 @@ final class Adapter implements AdapterInterface
                     return $this
                         ->bucket
                         ->get($path)
-                        ->map(static fn($content) => File\File::named(
+                        ->map(static fn($content) => File::named(
                             $child->toString(),
                             $content,
                         ))
-                        ->match(
-                            static fn($file) => Sequence::of($file),
-                            static fn() => Sequence::of(),
-                        );
+                        ->toSequence();
                 },
             );
     }
