@@ -196,20 +196,26 @@ class AdapterTest extends TestCase
 
     public function testContains()
     {
-        $this
-            ->forAll(Set\Elements::of(true, false))
-            ->then(function($exist) {
-                $filesystem = Adapter::of(
-                    $bucket = $this->createMock(Bucket::class),
-                );
-                $bucket
-                    ->expects($this->once())
-                    ->method('contains')
-                    ->with(Path::of('foo.pdf'))
-                    ->willReturn($exist);
+        $filesystem = Adapter::of(
+            $bucket = $this->createMock(Bucket::class),
+        );
+        $bucket
+            ->expects($this->once())
+            ->method('contains')
+            ->with(Path::of('foo.pdf'))
+            ->willReturn(true);
 
-                $this->assertSame($exist, $filesystem->contains(Name::of('foo.pdf')));
-            });
+        $this->assertTrue($filesystem->contains(Name::of('foo.pdf')));
+
+        $filesystem = Adapter::of(
+            $bucket = $this->createMock(Bucket::class),
+        );
+        $bucket
+            ->expects($this->exactly(2))
+            ->method('contains')
+            ->willReturnOnConsecutiveCalls(false, true);
+
+        $this->assertTrue($filesystem->contains(Name::of('foo.pdf')));
     }
 
     public function testRemove()
