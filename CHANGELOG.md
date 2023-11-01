@@ -9,6 +9,10 @@
 - Requires `innmind/filesystem:~7.1`
 - Requires `innmind/operating-system:~4.0`
 
+### Fixed
+
+- Removed files in directories were not removed from S3
+
 ## 3.2.1 - 2023-09-23
 
 ### Fixed
