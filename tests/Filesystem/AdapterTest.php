@@ -21,15 +21,9 @@ use Innmind\Immutable\{
     SideEffect,
 };
 use PHPUnit\Framework\TestCase;
-use Innmind\BlackBox\{
-    PHPUnit\BlackBox,
-    Set,
-};
 
 class AdapterTest extends TestCase
 {
-    use BlackBox;
-
     public function testInterface()
     {
         $this->assertInstanceOf(

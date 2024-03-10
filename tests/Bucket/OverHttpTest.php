@@ -4,7 +4,6 @@ declare(strict_types = 1);
 namespace Tests\Innmind\S3\Bucket;
 
 use Innmind\S3\{
-    Bucket\OverHttp,
     Bucket,
     Region,
     Factory,
