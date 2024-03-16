@@ -17,13 +17,14 @@ return static function() {
 
     if (\file_exists($file)) {
         $dotenv = new Dotenv;
+        $dotenv->usePutenv();
         $dotenv->load($file);
     }
 
     $os = OSFactory::build();
     $bucket = Factory::of($os)->build(
-        Url::of($_ENV['S3_URL'] ?? throw new Exception('Env var missing')),
-        Region::of($_ENV['S3_REGION'] ?? throw new Exception('Env var missing')),
+        Url::of(\getenv('S3_URL') ?? throw new Exception('Env var missing')),
+        Region::of(\getenv('S3_REGION') ?? throw new Exception('Env var missing')),
     );
 
     yield test(
