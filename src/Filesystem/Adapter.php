@@ -16,7 +16,6 @@ use Innmind\Filesystem\{
 };
 use Innmind\Url\Path;
 use Innmind\Immutable\{
-    Set,
     Sequence,
     Str,
     Maybe,
