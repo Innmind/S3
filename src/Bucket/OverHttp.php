@@ -90,6 +90,7 @@ final class OverHttp implements Bucket
     public function upload(Path $path, Content $content): Maybe
     {
         return ($this->fulfill)($this->request(Method::put, $path, $content))
+            ->leftMap(static fn($e) => dd($e->response()->body()->toString()))
             ->maybe()
             ->map(static fn() => new SideEffect);
     }
