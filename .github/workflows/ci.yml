@@ -31,12 +31,12 @@ jobs:
       - name: BlackBox
         run: php blackbox.php ci
         env:
-          S3_URL: ${{ secrets.S3_URL }}
-          S3_REGION: ${{ secrets.S3_REGION }}
+          S3_URL: ${{ secrets.S3_URL_PROOFS }}
+          S3_REGION: ${{ secrets.S3_REGION_PROOFS }}
   blackbox_coverage:
     runs-on: ${{ matrix.os }}
     concurrency:
-      group: proofs
+      group: coverage
       cancel-in-progress: false
     strategy:
       max-parallel: 1
@@ -62,8 +62,8 @@ jobs:
         run: php blackbox.php ci
         env:
           ENABLE_COVERAGE: 'true'
-          S3_URL: ${{ secrets.S3_URL }}
-          S3_REGION: ${{ secrets.S3_REGION }}
+          S3_URL: ${{ secrets.S3_URL_COVERAGE }}
+          S3_REGION: ${{ secrets.S3_REGION_COVERAGE }}
       - uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
