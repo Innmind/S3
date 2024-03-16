@@ -244,7 +244,7 @@ return static function() {
     yield proof(
         'Bucket over HTTP can check if directory exists',
         given(
-            Set\Sequence::of($names)->atMost(3),
+            Set\Sequence::of($names)->between(1, 3),
             $names,
             Set\Unicode::strings()->map(Content::ofString(...)),
         ),
