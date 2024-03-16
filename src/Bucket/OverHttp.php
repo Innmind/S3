@@ -30,6 +30,7 @@ use Innmind\Http\{
     Header\Value\Value,
 };
 use Innmind\Hash\Hash;
+use Innmind\Http\Header\ContentLength;
 use Innmind\Xml\{
     Reader,
     Element,
@@ -185,6 +186,7 @@ final class OverHttp implements Bucket
         Content $content = null,
         Query $query = null,
     ): Request {
+        $content ??= Content::none();
         $now = $this->clock->now()->changeTimezone(new UTC);
         $url = $this
             ->bucket
@@ -198,7 +200,7 @@ final class OverHttp implements Bucket
         $amazonDate = $now->format(new AmazonDate);
         $amazonTime = $now->format(new AmazonTime);
         $contentHash = Hash::sha256
-            ->ofContent($content ?? Content::none())
+            ->ofContent($content)
             ->hex();
         $headerNames = 'x-amz-content-sha256;x-amz-date';
         $headers = <<<HEADERS
@@ -258,18 +260,24 @@ final class OverHttp implements Bucket
             ->userInformation()
             ->user()
             ->toString();
+        $headers = Headers::of(
+            new Header('x-amz-date', new Value($amazonTime)),
+            new Header('x-amz-content-sha256', new Value($contentHash)),
+            new Header('Authorization', new Value(
+                "AWS4-HMAC-SHA256 Credential=$user/$scope,SignedHeaders=$headerNames,Signature=$signature",
+            )),
+        );
+
+        $headers = $content->size()->match(
+            static fn($size) => ($headers)(ContentLength::of($size->toInt())),
+            static fn() => $headers,
+        );
 
         return Request::of(
             $url,
             $method,
             ProtocolVersion::v11,
-            Headers::of(
-                new Header('x-amz-date', new Value($amazonTime)),
-                new Header('x-amz-content-sha256', new Value($contentHash)),
-                new Header('Authorization', new Value(
-                    "AWS4-HMAC-SHA256 Credential=$user/$scope,SignedHeaders=$headerNames,Signature=$signature",
-                )),
-            ),
+            $headers,
             $content,
         );
     }
