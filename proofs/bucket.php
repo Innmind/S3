@@ -37,9 +37,7 @@ return static function() {
         Region::of(\getenv('S3_REGION') ?? throw new Exception('Env var missing')),
     );
 
-    $names = Name::any()
-        ->map(static fn($name) => $name->toString())
-        ->map(\rawurlencode(...));
+    $names = Name::any()->map(static fn($name) => $name->toString());
     $paths = Set\Sequence::of($names)
         ->between(1, 4) // above 4*255 chars the S3 server rejects the path
         ->map(static fn($parts) => \implode('/', $parts));

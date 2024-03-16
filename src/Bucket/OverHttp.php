@@ -123,8 +123,8 @@ final class OverHttp implements Bucket
             $query = Query::of('delimiter=%2F&list-type=2');
             $prefixLength = 0;
         } else {
-            $query = Query::of('delimiter=%2F&list-type=2&prefix='.\urlencode($path->toString()));
-            $prefixLength = Str::of($path->toString())->length();
+            $query = Query::of('delimiter=%2F&list-type=2&prefix='.\rawurlencode($path->toString()));
+            $prefixLength = Str::of($path->toString(), Str\Encoding::ascii)->length();
         }
 
         return ($this->fulfill)($this->request(
@@ -163,7 +163,7 @@ final class OverHttp implements Bucket
                     ->map(Str::of(...))
                     ->map(
                         static fn($found) => $found
-                            ->trim()
+                            ->toEncoding(Str\Encoding::ascii)
                             ->drop($prefixLength)
                             ->toString(),
                     )
@@ -191,7 +191,7 @@ final class OverHttp implements Bucket
         $url = $this
             ->bucket
             ->withAuthority($this->bucket->authority()->withoutUserInformation())
-            ->withPath($this->bucket->path()->resolve($path));
+            ->withPath($this->bucket->path()->resolve(self::sanitize($path)));
 
         if ($query instanceof Query) {
             $url = $url->withQuery($query);
@@ -279,6 +279,20 @@ final class OverHttp implements Bucket
             ProtocolVersion::v11,
             $headers,
             $content,
+        );
+    }
+
+    private static function sanitize(Path $path): Path
+    {
+        return Path::of(
+            Str::of('/')
+                ->join(
+                    Str::of($path->toString())
+                        ->split('/')
+                        ->map(static fn($part) => $part->toString())
+                        ->map(\rawurlencode(...))
+                )
+                ->toString(),
         );
     }
 }
