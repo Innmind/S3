@@ -290,7 +290,7 @@ final class OverHttp implements Bucket
                     Str::of($path->toString())
                         ->split('/')
                         ->map(static fn($part) => $part->toString())
-                        ->map(\rawurlencode(...))
+                        ->map(\rawurlencode(...)),
                 )
                 ->toString(),
         );
