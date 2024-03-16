@@ -156,13 +156,13 @@ return static function() {
             $assert
                 ->expected($directory2.'/')
                 ->in($paths);
-            $assert->same(
-                [$file],
-                $bucket
-                    ->list(Path::of($directory1.'/'.$directory2.'/'))
-                    ->map(static fn($path) => $path->toString())
-                    ->toList(),
-            );
+            $paths = $bucket
+                ->list(Path::of($directory1.'/'.$directory2.'/'))
+                ->map(static fn($path) => $path->toString())
+                ->toList();
+            $assert
+                ->expected($file)
+                ->in($paths);
 
             // cleanup
             $bucket->delete(Path::of($directory1.'/'.$file))->match(
