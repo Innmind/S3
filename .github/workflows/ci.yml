@@ -5,7 +5,11 @@ on: [push]
 jobs:
   blackbox:
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: proofs
+      cancel-in-progress: false
     strategy:
+      max-parallel: 1
       matrix:
         os: [ubuntu-latest, macOS-latest]
         php-version: ['8.2', '8.3']
@@ -31,7 +35,11 @@ jobs:
           S3_REGION: ${{ secrets.S3_REGION }}
   blackbox_coverage:
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: proofs
+      cancel-in-progress: false
     strategy:
+      max-parallel: 1
       matrix:
         os: [ubuntu-latest, macOS-latest]
         php-version: ['8.2', '8.3']
