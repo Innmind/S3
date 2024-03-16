@@ -1,5 +1,6 @@
 composer.lock
 vendor/
+.env
 .phpunit.result.cache
 tests/node_modules
 !fixtures/.gitkeep
