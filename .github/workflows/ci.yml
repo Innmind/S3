@@ -26,9 +26,6 @@ jobs:
           dependency-versions: ${{ matrix.dependencies }}
       - name: BlackBox
         run: php blackbox.php ci
-        env:
-          S3_URL: {{ secrets.S3_URL }}
-          S3_REGION: {{ secrets.S3_REGION }}
   blackbox_coverage:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -54,8 +51,6 @@ jobs:
         run: php blackbox.php ci
         env:
           ENABLE_COVERAGE: 'true'
-          S3_URL: {{ secrets.S3_URL }}
-          S3_REGION: {{ secrets.S3_REGION }}
       - uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
