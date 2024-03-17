@@ -104,9 +104,17 @@ final class Adapter implements AdapterInterface
             $_ = $file
                 ->removed()
                 ->filter(static fn($file) => !$persisted->contains($file->toString()))
-                ->foreach(fn($file) => $this->bucket->delete(
-                    $this->resolve($path, File::of($file, Content::none())), // wrap name as a file because we can't know if the name represent a file or name
-                ));
+                ->foreach(
+                    fn($file) => $this
+                        ->bucket
+                        ->delete(
+                            $this->resolve($path, File::of($file, Content::none())), // wrap name as a file because we can't know if the name represent a file or name
+                        )
+                        ->match(
+                            static fn() => null,
+                            static fn() => throw new RuntimeException("Failed to remove '{$file->toString()}'"),
+                        ),
+                );
 
             return;
         }
