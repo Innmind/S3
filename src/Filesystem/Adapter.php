@@ -16,7 +16,6 @@ use Innmind\Filesystem\{
 };
 use Innmind\Url\Path;
 use Innmind\Immutable\{
-    Set,
     Sequence,
     Str,
     Maybe,
@@ -24,6 +23,8 @@ use Innmind\Immutable\{
 
 final class Adapter implements AdapterInterface
 {
+    private const VOID_FILE = '.keep-empty-directory';
+
     private Bucket $bucket;
 
     private function __construct(Bucket $bucket)
@@ -69,15 +70,7 @@ final class Adapter implements AdapterInterface
 
     public function remove(Name $file): void
     {
-        // the ->match() is here to force unwrap the monad to make sure the
-        // underlying operation is executed
-        $_ = $this
-            ->bucket
-            ->delete(Path::of($file->toString()))
-            ->match(
-                static fn() => null,
-                static fn() => throw new RuntimeException("Failed to remove '{$file->toString()}'"),
-            );
+        $this->doRemove(Path::of($file->toString()));
     }
 
     public function root(): Directory
@@ -94,6 +87,7 @@ final class Adapter implements AdapterInterface
             $path = $this->resolve($root, $file);
             $persisted = $file
                 ->all()
+                ->add(File::named(self::VOID_FILE, Content::none()))
                 ->map(function($file) use ($path) {
                     $this->upload($path, $file);
 
@@ -105,14 +99,17 @@ final class Adapter implements AdapterInterface
             $_ = $file
                 ->removed()
                 ->filter(static fn($file) => !$persisted->contains($file->toString()))
-                ->foreach(fn($file) => $this->bucket->delete(
-                    $this->resolve($path, File::of($file, Content::none())), // wrap name as a file because we can't know if the name represent a file or name
-                ));
+                ->foreach(
+                    fn($file) => $this->doRemove(
+                        $this->resolve($path, File::of($file, Content::none())), // wrap name as a file because we can't know if the name represent a file or name
+                    ),
+                );
 
             return;
         }
 
         $path = $this->resolve($root, $file);
+        $this->doRemove($path);
         // the ->match() is here to force unwrap the monad to make sure the
         // underlying operation is executed
         $_ = $this
@@ -120,7 +117,8 @@ final class Adapter implements AdapterInterface
             ->upload(
                 $path,
                 $file->content(),
-            )->match(
+            )
+            ->match(
                 static fn() => null,
                 static fn() => throw new RuntimeException("Failed to upload '{$path->toString()}'"),
             );
@@ -185,6 +183,32 @@ final class Adapter implements AdapterInterface
                         ))
                         ->toSequence();
                 },
+            )
+            ->filter(static fn($file) => $file->name()->toString() !== self::VOID_FILE);
+    }
+
+    private function doRemove(Path $path): void
+    {
+        $directory = Path::of(\rtrim($path->toString(), '/').'/');
+
+        if ($this->bucket->contains($directory)) {
+            $_ = $this
+                ->bucket
+                ->list($directory)
+                ->foreach(fn($path) => $this->doRemove($directory->resolve($path)));
+
+            // no return to also call the delete below in case there is both a
+            // directory and a file with the same name
+        }
+
+        // the ->match() is here to force unwrap the monad to make sure the
+        // underlying operation is executed
+        $_ = $this
+            ->bucket
+            ->delete($path)
+            ->match(
+                static fn() => null,
+                static fn() => throw new RuntimeException("Failed to remove '{$path->toString()}'"),
             );
     }
 }
