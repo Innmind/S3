@@ -23,6 +23,8 @@ use Innmind\Immutable\{
 
 final class Adapter implements AdapterInterface
 {
+    private const string VOID_FILE = '.keep-empty-directory';
+
     private Bucket $bucket;
 
     private function __construct(Bucket $bucket)
@@ -93,6 +95,7 @@ final class Adapter implements AdapterInterface
             $path = $this->resolve($root, $file);
             $persisted = $file
                 ->all()
+                ->add(File::named(self::VOID_FILE, Content::none()))
                 ->map(function($file) use ($path) {
                     $this->upload($path, $file);
 
@@ -192,6 +195,7 @@ final class Adapter implements AdapterInterface
                         ))
                         ->toSequence();
                 },
-            );
+            )
+            ->filter(static fn($file) => $file->name()->toString() !== self::VOID_FILE);
     }
 }
