@@ -23,7 +23,7 @@ use Innmind\Immutable\{
 
 final class Adapter implements AdapterInterface
 {
-    private const string VOID_FILE = '.keep-empty-directory';
+    private const VOID_FILE = '.keep-empty-directory';
 
     private Bucket $bucket;
 
