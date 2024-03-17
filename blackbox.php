@@ -17,6 +17,10 @@ Application::new($argv)
         static fn(Application $app) => $app->scenariiPerProof(5),
     )
     ->when(
+        \getenv('PERIODIC_CI') !== false,
+        static fn(Application $app) => $app->scenariiPerProof(10),
+    )
+    ->when(
         \getenv('ENABLE_COVERAGE') !== false,
         static fn(Application $app) => $app->codeCoverage(
             CodeCoverage::of(
