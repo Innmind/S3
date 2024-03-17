@@ -259,6 +259,7 @@ return static function() {
             );
 
             $parent = '';
+
             foreach ($path as $directory) {
                 $assert->true(
                     $bucket->contains(Path::of($parent.$directory.'/')),
@@ -275,6 +276,6 @@ return static function() {
                         static fn() => false,
                     ),
             );
-        }
+        },
     )->tag(Tag::local, Tag::ci);
 };

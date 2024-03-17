@@ -11,7 +11,7 @@ use Innmind\Url\Url;
 use Properties\Innmind\Filesystem\Adapter;
 use Innmind\BlackBox\{
     Set,
-    tag,
+    Tag,
 };
 use Symfony\Component\Dotenv\Dotenv;
 
@@ -33,13 +33,13 @@ return static function() {
     yield properties(
         'S3',
         Adapter::properties(),
-        Set\Call::of(fn() => Filesystem\Adapter::of($bucket)),
+        Set\Call::of(static fn() => Filesystem\Adapter::of($bucket)),
     )->tag(Tag::local, Tag::ci);
 
     foreach (Adapter::alwaysApplicable() as $property) {
         yield property(
             $property,
-            Set\Call::of(fn() => Filesystem\Adapter::of($bucket)),
+            Set\Call::of(static fn() => Filesystem\Adapter::of($bucket)),
         )
             ->named('S3')
             ->tag(Tag::local, Tag::ci);
