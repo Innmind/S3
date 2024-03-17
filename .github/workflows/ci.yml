@@ -11,8 +11,8 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        os: [ubuntu-latest, macOS-latest]
-        php-version: ['8.2', '8.3']
+        os: [ubuntu-latest]
+        php-version: ['8.3']
         dependency-versions: ['lowest', 'highest']
     name: 'BlackBox'
     steps:
@@ -42,8 +42,8 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        os: [ubuntu-latest, macOS-latest]
-        php-version: ['8.2', '8.3']
+        os: [ubuntu-latest]
+        php-version: ['8.3']
         dependency-versions: ['lowest', 'highest']
     name: 'BlackBox Coverage'
     steps:
