@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Empty directories are now listed
+- Uploading documents with special characters
+- Deleting entire directories
+
 ## 4.0.0 - 2023-11-01
 
 ### Changed
