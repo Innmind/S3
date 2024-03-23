@@ -151,7 +151,6 @@ final class Adapter implements AdapterInterface
             return;
         }
 
-        $path = $this->resolve($root, $file);
         $this->doRemove($path);
         // the ->match() is here to force unwrap the monad to make sure the
         // underlying operation is executed
