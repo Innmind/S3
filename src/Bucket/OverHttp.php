@@ -169,10 +169,10 @@ final class OverHttp implements Bucket
                     )
                     ->map(Path::of(...)),
             )
-            ->match(
-                static fn($paths) => $paths,
-                static fn() => Sequence::of(),
-            );
+            // Use monad type juggling instead of matching to allow to schedule
+            // mutliple http calls at once
+            ->toSequence()
+            ->flatMap(static fn($paths) => $paths);
     }
 
     /**
