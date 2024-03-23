@@ -28,17 +28,34 @@ final class Adapter implements AdapterInterface
     private Bucket $bucket;
     /** @var \WeakMap<File|Directory, Path> */
     private \WeakMap $loaded;
+    private bool $keepEmptyDirectories;
 
-    private function __construct(Bucket $bucket)
+    private function __construct(Bucket $bucket, bool $keepEmptyDirectories)
     {
         $this->bucket = $bucket;
+        $this->keepEmptyDirectories = $keepEmptyDirectories;
         /** @var \WeakMap<File|Directory, Path> */
         $this->loaded = new \WeakMap;
     }
 
     public static function of(Bucket $bucket): self
     {
-        return new self($bucket);
+        return new self($bucket, true);
+    }
+
+    /**
+     * By default this adapter creates an empty dot file in each directory in
+     * order to be fully compatible with other adapters from the
+     * innmind/filesystem package.
+     *
+     * Call this method if you want to keep the default S3 behaviour of not
+     * listing empty directories.
+     *
+     * @psalm-mutation-free
+     */
+    public function dontKeepEmptyDirectories(): self
+    {
+        return new self($this->bucket, false);
     }
 
     public function add(File|Directory $file): void
@@ -109,9 +126,11 @@ final class Adapter implements AdapterInterface
         }
 
         if ($file instanceof Directory) {
-            $persisted = $file
-                ->all()
-                ->add(File::named(self::VOID_FILE, Content::none()))
+            $all = match ($this->keepEmptyDirectories) {
+                true => $file->all()->add(File::named(self::VOID_FILE, Content::none())),
+                false => $file->all(),
+            };
+            $persisted = $all
                 ->map(function($file) use ($path) {
                     $this->upload($path, $file);
 
