@@ -30,7 +30,6 @@ jobs:
         env:
           S3_URL: ${{ secrets.S3_URL_PROOFS }}
           S3_REGION: ${{ secrets.S3_REGION_PROOFS }}
-          CI: 'true'
   blackbox_coverage:
     runs-on: ${{ matrix.os }}
     concurrency:

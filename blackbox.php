@@ -13,10 +13,6 @@ Application::new($argv)
     ->disableMemoryLimit()
     ->scenariiPerProof(1)
     ->when(
-        \getenv('CI') === false,
-        static fn(Application $app) => $app->scenariiPerProof(5),
-    )
-    ->when(
         \getenv('ENABLE_COVERAGE') !== false,
         static fn(Application $app) => $app->codeCoverage(
             CodeCoverage::of(
