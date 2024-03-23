@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Delete calls via the filesystem adapter are done concurrently when possible
+
 ### Fixed
 
 - Empty directories are now listed

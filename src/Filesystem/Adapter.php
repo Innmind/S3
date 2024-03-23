@@ -19,6 +19,7 @@ use Innmind\Immutable\{
     Sequence,
     Str,
     Maybe,
+    SideEffect,
 };
 
 final class Adapter implements AdapterInterface
@@ -100,7 +101,10 @@ final class Adapter implements AdapterInterface
 
     public function remove(Name $file): void
     {
-        $this->doRemove(Path::of($file->toString()));
+        $_ = $this
+            ->doRemove(Path::of($file->toString()))
+            ->flatMap(static fn($call) => $call->toSequence())
+            ->foreach(static fn() => null); // force unwrapping the delete calls
     }
 
     public function root(): Directory
@@ -139,19 +143,23 @@ final class Adapter implements AdapterInterface
                 ->map(static fn($file) => $file->name()->toString())
                 ->memoize()
                 ->toSet();
-            $_ = $file
-                ->removed()
+            $_ = Sequence::of(...$file->removed()->toList())
                 ->filter(static fn($file) => !$persisted->contains($file->toString()))
-                ->foreach(
-                    fn($file) => $this->doRemove(
-                        $this->resolve($path, File::of($file, Content::none())), // wrap name as a file because we can't know if the name represent a file or name
-                    ),
-                );
+                ->map(fn($file) => $this->resolve(
+                    $path,
+                    File::of($file, Content::none()), // wrap name as a file because we can't know if the name represent a file or name
+                ))
+                ->flatMap($this->doRemove(...))
+                ->flatMap(static fn($call) => $call->toSequence())
+                ->foreach(static fn() => null); // force unwrapping the delete calls
 
             return;
         }
 
-        $this->doRemove($path);
+        $_ = $this
+            ->doRemove($path)
+            ->flatMap(static fn($call) => $call->toSequence())
+            ->foreach(static fn() => null); // force unwrapping the delete calls
         // the ->match() is here to force unwrap the monad to make sure the
         // underlying operation is executed
         $_ = $this
@@ -238,28 +246,27 @@ final class Adapter implements AdapterInterface
             ->filter(static fn($file) => $file->name()->toString() !== self::VOID_FILE);
     }
 
-    private function doRemove(Path $path): void
+    /**
+     * @return Sequence<Maybe<SideEffect>>
+     */
+    private function doRemove(Path $path): Sequence
     {
         $directory = Path::of(\rtrim($path->toString(), '/').'/');
 
-        if ($this->bucket->contains($directory)) {
-            $_ = $this
-                ->bucket
-                ->list($directory)
-                ->foreach(fn($path) => $this->doRemove($directory->resolve($path)));
-
-            // no return to also call the delete below in case there is both a
-            // directory and a file with the same name
-        }
-
-        // the ->match() is here to force unwrap the monad to make sure the
-        // underlying operation is executed
-        $_ = $this
+        return $this
             ->bucket
-            ->delete($path)
-            ->match(
-                static fn() => null,
-                static fn() => throw new RuntimeException("Failed to remove '{$path->toString()}'"),
-            );
+            ->list($directory)
+            ->flatMap(fn($path) => $this->doRemove($directory->resolve($path)))
+            ->append(Sequence::lazy(function() use ($path) {
+                // We use a lazy sequence heret to make sure this delete call is
+                // made after the recursive call to doRemove() above
+                /** @var Maybe<SideEffect> */
+                $remove = $this
+                    ->bucket
+                    ->delete($path)
+                    ->otherwise(static fn() => throw new RuntimeException("Failed to remove '{$path->toString()}'"));
+
+                yield $remove;
+            }));
     }
 }
