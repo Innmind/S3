@@ -191,8 +191,8 @@ final class Adapter implements AdapterInterface
         return $this
             ->bucket
             ->list($folder)
-            ->flatMap(
-                function(Path $child) use ($folder): Sequence {
+            ->map(
+                function(Path $child) use ($folder) {
                     $path = $folder->equals(Path::none()) ? $child : $folder->resolve($child);
 
                     if ($child->directory()) {
@@ -209,23 +209,30 @@ final class Adapter implements AdapterInterface
                         );
                         $this->loaded[$directory] = $path;
 
-                        return Sequence::of($directory);
+                        return $directory;
                     }
 
-                    /** @psalm-suppress ArgumentTypeCoercion */
-                    return $this
-                        ->bucket
-                        ->get($path)
-                        ->map(static fn($content) => File::named(
-                            $child->toString(),
-                            $content,
-                        ))
-                        ->map(function($file) use ($path) {
-                            $this->loaded[$file] = $path;
+                    /**
+                     * We use a lazy sequence to load the file content to
+                     * prevent fetching the content even when not used.
+                     * The drawback of this approach is that if the file is
+                     * deleted between the moment it has been listed and the
+                     * moment the content is used then the content will be empty.
+                     * @psalm-suppress ArgumentTypeCoercion
+                     */
+                    $file = File::named(
+                        $child->toString(),
+                        Content::ofChunks(Sequence::lazy(function() use ($path) {
+                            yield $this
+                                ->bucket
+                                ->get($path)
+                                ->toSequence()
+                                ->flatMap(static fn($content) => $content->chunks());
+                        })->flatMap(static fn($chunks) => $chunks)),
+                    );
+                    $this->loaded[$file] = $path;
 
-                            return $file;
-                        })
-                        ->toSequence();
+                    return $file;
                 },
             )
             ->filter(static fn($file) => $file->name()->toString() !== self::VOID_FILE);
