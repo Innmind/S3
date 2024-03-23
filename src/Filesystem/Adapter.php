@@ -201,17 +201,15 @@ final class Adapter implements AdapterInterface
                          * bucket
                          * @psalm-suppress ArgumentTypeCoercion
                          */
-                        return Sequence::lazy(
-                            function() use ($child, $path) {
-                                $directory = Directory::of(
-                                    Name::of(Str::of($child->toString())->dropEnd(1)->toString()), // drop trailing '/'
-                                    $this->children($path),
-                                );
-                                $this->loaded[$directory] = $path;
-
-                                yield $directory;
-                            },
+                        $directory = Directory::of(
+                            Name::of(Str::of($child->toString())->dropEnd(1)->toString()), // drop trailing '/'
+                            Sequence::lazy(function() use ($path) {
+                                yield $this->children($path);
+                            })->flatMap(static fn($files) => $files),
                         );
+                        $this->loaded[$directory] = $path;
+
+                        return Sequence::of($directory);
                     }
 
                     /** @psalm-suppress ArgumentTypeCoercion */

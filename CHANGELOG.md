@@ -7,6 +7,7 @@
 - Empty directories are now listed
 - Uploading documents with special characters
 - Deleting entire directories
+- Over-fetching directories content even when not used
 
 ## 4.0.0 - 2023-11-01
 
