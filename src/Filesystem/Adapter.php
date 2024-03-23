@@ -188,10 +188,6 @@ final class Adapter implements AdapterInterface
      */
     private function children(Path $folder): Sequence
     {
-        /**
-         * @psalm-suppress InvalidArgument Due to empty Set
-         * @var Sequence<File>
-         */
         return $this
             ->bucket
             ->list($folder)
