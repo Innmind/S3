@@ -30,6 +30,7 @@ use Innmind\Http\{
     Header\Value\Value,
 };
 use Innmind\Hash\Hash;
+use Innmind\Http\Header\ContentLength;
 use Innmind\Xml\{
     Reader,
     Element,
@@ -122,8 +123,8 @@ final class OverHttp implements Bucket
             $query = Query::of('delimiter=%2F&list-type=2');
             $prefixLength = 0;
         } else {
-            $query = Query::of('delimiter=%2F&list-type=2&prefix='.\urlencode($path->toString()));
-            $prefixLength = Str::of($path->toString())->length();
+            $query = Query::of('delimiter=%2F&list-type=2&prefix='.\rawurlencode($path->toString()));
+            $prefixLength = Str::of($path->toString(), Str\Encoding::ascii)->length();
         }
 
         return ($this->fulfill)($this->request(
@@ -162,16 +163,16 @@ final class OverHttp implements Bucket
                     ->map(Str::of(...))
                     ->map(
                         static fn($found) => $found
-                            ->trim()
+                            ->toEncoding(Str\Encoding::ascii)
                             ->drop($prefixLength)
                             ->toString(),
                     )
                     ->map(Path::of(...)),
             )
-            ->match(
-                static fn($paths) => $paths,
-                static fn() => Sequence::of(),
-            );
+            // Use monad type juggling instead of matching to allow to schedule
+            // mutliple http calls at once
+            ->toSequence()
+            ->flatMap(static fn($paths) => $paths);
     }
 
     /**
@@ -185,11 +186,12 @@ final class OverHttp implements Bucket
         Content $content = null,
         Query $query = null,
     ): Request {
+        $content ??= Content::none();
         $now = $this->clock->now()->changeTimezone(new UTC);
         $url = $this
             ->bucket
             ->withAuthority($this->bucket->authority()->withoutUserInformation())
-            ->withPath($this->bucket->path()->resolve($path));
+            ->withPath($this->bucket->path()->resolve(self::sanitize($path)));
 
         if ($query instanceof Query) {
             $url = $url->withQuery($query);
@@ -198,7 +200,7 @@ final class OverHttp implements Bucket
         $amazonDate = $now->format(new AmazonDate);
         $amazonTime = $now->format(new AmazonTime);
         $contentHash = Hash::sha256
-            ->ofContent($content ?? Content::none())
+            ->ofContent($content)
             ->hex();
         $headerNames = 'x-amz-content-sha256;x-amz-date';
         $headers = <<<HEADERS
@@ -258,19 +260,39 @@ final class OverHttp implements Bucket
             ->userInformation()
             ->user()
             ->toString();
+        $headers = Headers::of(
+            new Header('x-amz-date', new Value($amazonTime)),
+            new Header('x-amz-content-sha256', new Value($contentHash)),
+            new Header('Authorization', new Value(
+                "AWS4-HMAC-SHA256 Credential=$user/$scope,SignedHeaders=$headerNames,Signature=$signature",
+            )),
+        );
+
+        $headers = $content->size()->match(
+            static fn($size) => ($headers)(ContentLength::of($size->toInt())),
+            static fn() => $headers,
+        );
 
         return Request::of(
             $url,
             $method,
             ProtocolVersion::v11,
-            Headers::of(
-                new Header('x-amz-date', new Value($amazonTime)),
-                new Header('x-amz-content-sha256', new Value($contentHash)),
-                new Header('Authorization', new Value(
-                    "AWS4-HMAC-SHA256 Credential=$user/$scope,SignedHeaders=$headerNames,Signature=$signature",
-                )),
-            ),
+            $headers,
             $content,
+        );
+    }
+
+    private static function sanitize(Path $path): Path
+    {
+        return Path::of(
+            Str::of('/')
+                ->join(
+                    Str::of($path->toString())
+                        ->split('/')
+                        ->map(static fn($part) => $part->toString())
+                        ->map(\rawurlencode(...)),
+                )
+                ->toString(),
         );
     }
 }

@@ -2,73 +2,46 @@
 declare(strict_types = 1);
 
 use Innmind\S3\{
-    Factory as S3Factory,
+    Factory,
     Filesystem,
     Region,
 };
-use Innmind\OperatingSystem\Factory;
+use Innmind\OperatingSystem\Factory as OSFactory;
 use Innmind\Url\Url;
-use Innmind\Immutable\Sequence;
 use Properties\Innmind\Filesystem\Adapter;
-use Innmind\BlackBox\Set;
-use Symfony\Component\Filesystem\Filesystem as FS;
-use Symfony\Component\Process\Process;
+use Innmind\BlackBox\{
+    Set,
+    Tag,
+};
+use Symfony\Component\Dotenv\Dotenv;
 
 return static function() {
-    (new FS)->remove(__DIR__.'/../../fixtures/my-bucket');
+    $file = __DIR__.'/../.env';
 
-    $command = [
-        'npm',
-        'run',
-        's3-server',
-        '--',
-        '--directory',
-        __DIR__.'/../../fixtures',
-        '--configure-bucket',
-        'my-bucket',
-    ];
-    $s3ServerProcess = new Process($command, __DIR__.'/..');
-    $s3ServerProcess->start();
-    $s3ServerProcess->waitUntil(
-        static fn($type, $output) => \str_contains($output, 'S3rver listening'),
+    if (\file_exists($file)) {
+        $dotenv = new Dotenv;
+        $dotenv->usePutenv();
+        $dotenv->load($file);
+    }
+
+    $os = OSFactory::build();
+    $bucket = Factory::of($os)->build(
+        Url::of(\getenv('S3_URL') ?? throw new Exception('Env var missing')),
+        Region::of(\getenv('S3_REGION') ?? throw new Exception('Env var missing')),
     );
 
     yield properties(
         'S3',
-        Adapter::properties()
-            ->filter(
-                static fn($all) => !Sequence::of(...$all->properties())
-                    ->map(static fn($property) => $property::class)
-                    ->any(static fn($property) => $property === Adapter\AddEmptyDirectory::class),
-            )
-            ->filter(
-                static fn($all) => Sequence::of(...$all->properties())
-                    ->filter(
-                        static fn($property) => $property instanceof Adapter\AddDirectory ||
-                            $property instanceof Adapter\RemoveAddRemoveModificationsDoesntAddTheFile,
-                    )
-                    ->filter(static fn($property) => $property->directory()->all()->empty())
-                    ->empty(),
-            ),
-        Set\Call::of(fn() => Filesystem\Adapter::of(
-            S3Factory::of(Factory::build())->build(
-                Url::of('http://S3RVER:S3RVER@localhost:4568/my-bucket/'),
-                Region::of('doesnt-matter-here'),
-            ),
-        )),
-    );
+        Adapter::properties(),
+        Set\Call::of(static fn() => Filesystem\Adapter::of($bucket)),
+    )->tag(Tag::local, Tag::ci);
 
     foreach (Adapter::alwaysApplicable() as $property) {
         yield property(
             $property,
-            Set\Call::of(fn() => Filesystem\Adapter::of(
-                S3Factory::of(Factory::build())->build(
-                    Url::of('http://S3RVER:S3RVER@localhost:4568/my-bucket/'),
-                    Region::of('doesnt-matter-here'),
-                ),
-            )),
-        )->named('S3');
+            Set\Call::of(static fn() => Filesystem\Adapter::of($bucket)),
+        )
+            ->named('S3')
+            ->tag(Tag::local, Tag::ci);
     }
-
-    $s3ServerProcess->stop();
 };

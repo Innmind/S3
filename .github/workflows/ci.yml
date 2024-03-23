@@ -5,15 +5,18 @@ on: [push]
 jobs:
   blackbox:
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: proofs
+      cancel-in-progress: false
     strategy:
+      max-parallel: 1
       matrix:
-        os: [ubuntu-latest, macOS-latest]
-        php-version: ['8.2', '8.3']
-        dependency-versions: ['lowest', 'highest']
+        os: [ubuntu-latest]
+        php-version: ['8.3']
     name: 'BlackBox'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -22,21 +25,25 @@ jobs:
           coverage: none
       - name: Composer
         uses: "ramsey/composer-install@v2"
-        with:
-          dependency-versions: ${{ matrix.dependencies }}
       - name: BlackBox
-        run: php blackbox.php
+        run: php blackbox.php ci
+        env:
+          S3_URL: ${{ secrets.S3_URL_PROOFS }}
+          S3_REGION: ${{ secrets.S3_REGION_PROOFS }}
   blackbox_coverage:
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: coverage
+      cancel-in-progress: false
     strategy:
+      max-parallel: 1
       matrix:
-        os: [ubuntu-latest, macOS-latest]
-        php-version: ['8.2', '8.3']
-        dependency-versions: ['lowest', 'highest']
+        os: [ubuntu-latest]
+        php-version: ['8.3']
     name: 'BlackBox Coverage'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -45,40 +52,12 @@ jobs:
           coverage: xdebug
       - name: Composer
         uses: "ramsey/composer-install@v2"
-        with:
-          dependency-versions: ${{ matrix.dependencies }}
       - name: BlackBox
-        run: php blackbox.php
+        run: php blackbox.php ci
         env:
           ENABLE_COVERAGE: 'true'
-      - uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-  phpunit:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macOS-latest]
-        php-version: ['8.2', '8.3']
-        dependencies: ['lowest', 'highest']
-    name: 'PHPUnit'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php-version }}
-          extensions: mbstring, intl
-          coverage: xdebug
-      - name: Composer
-        uses: "ramsey/composer-install@v2"
-        with:
-          dependency-versions: ${{ matrix.dependencies }}
-      - name: Install S3 server
-        run: cd tests && npm ci
-      - name: PHPUnit
-        run: vendor/bin/phpunit --coverage-clover=coverage.clover
+          S3_URL: ${{ secrets.S3_URL_COVERAGE }}
+          S3_REGION: ${{ secrets.S3_REGION_COVERAGE }}
       - uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -91,7 +70,7 @@ jobs:
     name: 'Psalm'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -111,7 +90,7 @@ jobs:
     name: 'CS'
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:

@@ -1,5 +1,23 @@
 # Changelog
 
+## 4.1.0 - 2024-03-23
+
+### Added
+
+- Support for `innmind/operating:~5.0`
+
+### Changed
+
+- Delete calls via the filesystem adapter are done concurrently when possible
+
+### Fixed
+
+- Empty directories are now listed
+- Uploading documents with special characters
+- Deleting entire directories
+- Over-fetching directories content even when not used
+- Over-fetching files content even when not used
+
 ## 4.0.0 - 2023-11-01
 
 ### Changed
