@@ -26,10 +26,14 @@ final class Adapter implements AdapterInterface
     private const VOID_FILE = '.keep-empty-directory';
 
     private Bucket $bucket;
+    /** @var \WeakMap<File|Directory, Path> */
+    private \WeakMap $loaded;
 
     private function __construct(Bucket $bucket)
     {
         $this->bucket = $bucket;
+        /** @var \WeakMap<File|Directory, Path> */
+        $this->loaded = new \WeakMap;
     }
 
     public static function of(Bucket $bucket): self
@@ -49,7 +53,11 @@ final class Adapter implements AdapterInterface
             return Maybe::just(Directory::of(
                 $file,
                 $this->children(Path::of($file->toString().'/')),
-            ));
+            ))->map(function($directory) {
+                $this->loaded[$directory] = Path::of($directory->name()->toString().'/');
+
+                return $directory;
+            });
         }
 
         /** @var Maybe<File> */
@@ -59,7 +67,12 @@ final class Adapter implements AdapterInterface
             ->map(static fn($content) => File::of(
                 $file,
                 $content,
-            ));
+            ))
+            ->map(function($file) {
+                $this->loaded[$file] = Path::of($file->name()->toString());
+
+                return $file;
+            });
     }
 
     public function contains(Name $file): bool
@@ -83,8 +96,19 @@ final class Adapter implements AdapterInterface
 
     private function upload(Path $root, File|Directory $file): void
     {
+        $path = $this->resolve($root, $file);
+
+        if ($this->loaded->offsetExists($file)) {
+            if ($file instanceof File && $this->loaded[$file]->equals($path)) {
+                return;
+            }
+
+            if ($file instanceof Directory && $this->loaded[$file]->equals(Path::of($path->toString().'/'))) {
+                return;
+            }
+        }
+
         if ($file instanceof Directory) {
-            $path = $this->resolve($root, $file);
             $persisted = $file
                 ->all()
                 ->add(File::named(self::VOID_FILE, Content::none()))
@@ -165,10 +189,13 @@ final class Adapter implements AdapterInterface
                          */
                         return Sequence::lazy(
                             function() use ($child, $path) {
-                                yield Directory::of(
+                                $directory = Directory::of(
                                     Name::of(Str::of($child->toString())->dropEnd(1)->toString()), // drop trailing '/'
                                     $this->children($path),
                                 );
+                                $this->loaded[$directory] = $path;
+
+                                yield $directory;
                             },
                         );
                     }
@@ -181,6 +208,11 @@ final class Adapter implements AdapterInterface
                             $child->toString(),
                             $content,
                         ))
+                        ->map(function($file) use ($path) {
+                            $this->loaded[$file] = $path;
+
+                            return $file;
+                        })
                         ->toSequence();
                 },
             )
