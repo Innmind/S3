@@ -8,7 +8,10 @@ use Innmind\S3\{
     Region,
     Exception\LogicException,
 };
-use Innmind\OperatingSystem\Factory as OSFactory;
+use Innmind\OperatingSystem\{
+    Factory as OSFactory,
+    OperatingSystem\Resilient,
+};
 use Innmind\Filesystem\File\Content;
 use Innmind\Url\{
     Url,
@@ -31,7 +34,7 @@ return static function() {
         $dotenv->load($file);
     }
 
-    $os = OSFactory::build();
+    $os = Resilient::of(OSFactory::build());
     $bucket = Factory::of($os)->build(
         Url::of(\getenv('S3_URL') ?? throw new Exception('Env var missing')),
         Region::of(\getenv('S3_REGION') ?? throw new Exception('Env var missing')),
