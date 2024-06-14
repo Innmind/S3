@@ -120,18 +120,42 @@ final class OverHttp implements Bucket
         }
 
         if ($path->equals(Path::none())) {
-            $query = Query::of('delimiter=%2F&list-type=2');
+            $query = 'delimiter=%2F&list-type=2';
             $prefixLength = 0;
         } else {
-            $query = Query::of('delimiter=%2F&list-type=2&prefix='.\rawurlencode($path->toString()));
+            $query = 'delimiter=%2F&list-type=2&prefix='.\rawurlencode($path->toString());
             $prefixLength = Str::of($path->toString(), Str\Encoding::ascii)->length();
+        }
+
+        return $this
+            ->paginate($path, $query)
+            ->map(Str::of(...))
+            ->map(
+                static fn($found) => $found
+                    ->toEncoding(Str\Encoding::ascii)
+                    ->drop($prefixLength)
+                    ->toString(),
+            )
+            ->map(Path::of(...));
+    }
+
+    /**
+     * @return Sequence<string>
+     */
+    private function paginate(
+        Path $path,
+        string $query,
+        string $next = null,
+    ): Sequence {
+        if (\is_string($next)) {
+            $next = '&continuation-token='.$next;
         }
 
         return ($this->fulfill)($this->request(
             Method::get,
             $this->bucket->path(),
             null,
-            $query,
+            Query::of($query.(string) $next),
         ))
             ->maybe()
             ->map(static fn($success) => $success->response()->body())
@@ -140,7 +164,7 @@ final class OverHttp implements Bucket
             ->flatMap(static fn($document) => $document->children()->first())
             ->map(static fn($list) => $list->children()->keep(Instance::of(Element::class)))
             ->map(
-                static fn($elements) => $elements
+                fn($elements) => $elements
                     ->filter(static fn($element) => $element->name() === 'Contents')
                     ->flatMap(
                         static fn($content) => $content
@@ -156,18 +180,23 @@ final class OverHttp implements Bucket
                             ->keep(Instance::of(Element::class))
                             ->filter(static fn($element) => $element->name() === 'Prefix')
                             ->map(static fn($prefix) => $prefix->content()),
-                    ),
-            )
-            ->map(
-                static fn($paths) => $paths
-                    ->map(Str::of(...))
-                    ->map(
-                        static fn($found) => $found
-                            ->toEncoding(Str\Encoding::ascii)
-                            ->drop($prefixLength)
-                            ->toString(),
                     )
-                    ->map(Path::of(...)),
+                    ->append(
+                        $elements
+                            ->find(static fn($element) => $element->name() === 'NextContinuationToken')
+                            ->keep(Instance::of(Element::class))
+                            ->map(static fn($token) => $token->content())
+                            ->match(
+                                fn($token) => Sequence::lazy(
+                                    fn() => yield $this->paginate(
+                                        $path,
+                                        $query,
+                                        $token,
+                                    ),
+                                )->flatMap(static fn($elements) => $elements),
+                                static fn() => Sequence::of(),
+                            ),
+                    ),
             )
             // Use monad type juggling instead of matching to allow to schedule
             // mutliple http calls at once
