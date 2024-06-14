@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.1.1 - 2024-06-14
+
+### Fixed
+
+- Listing elements inside a path is no longer limited to 1000 elements, it now follows the pagination
+
 ## 4.1.0 - 2024-03-23
 
 ### Added
