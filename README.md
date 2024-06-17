@@ -58,3 +58,6 @@ $data
         static fn() => null, // do something if there is no images
     );
 ```
+
+> [!WARNING]
+> A bucket can contain a file and a directory with the same name. This is not supported by `innmind/filesystem` adapters. This means that if you use `Innmind\S3\Filesystem\Adapter` on a bucket where there is a file and a directory with the same name it will result in unexpected behaviour or an exception.

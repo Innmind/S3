@@ -30,6 +30,8 @@ jobs:
         env:
           S3_URL: ${{ secrets.S3_URL_PROOFS }}
           S3_REGION: ${{ secrets.S3_REGION_PROOFS }}
+          S3_PROPERTIES_URL: ${{ secrets.S3_PROPERTIES_URL_PROOFS }}
+          S3_PROPERTIES_REGION: ${{ secrets.S3_PROPERTIES_REGION_PROOFS }}
   blackbox_coverage:
     runs-on: ${{ matrix.os }}
     concurrency:
@@ -58,6 +60,8 @@ jobs:
           ENABLE_COVERAGE: 'true'
           S3_URL: ${{ secrets.S3_URL_COVERAGE }}
           S3_REGION: ${{ secrets.S3_REGION_COVERAGE }}
+          S3_PROPERTIES_URL: ${{ secrets.S3_PROPERTIES_URL_COVERAGE }}
+          S3_PROPERTIES_REGION: ${{ secrets.S3_PROPERTIES_REGION_COVERAGE }}
       - uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
