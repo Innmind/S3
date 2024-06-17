@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.1.2 - 2024-06-17
+
+### Fixed
+
+- Continuation token used when paginating a listed wasn't properly encoded
+
 ## 4.1.1 - 2024-06-14
 
 ### Fixed

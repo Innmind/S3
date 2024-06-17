@@ -3,6 +3,9 @@ name: Periodic CI
 on:
   schedule:
     - cron: '0 1 * * 1'
+  push:
+    paths:
+      - '.github/workflows/periodic.yml'
 
 jobs:
   blackbox:
@@ -35,3 +38,5 @@ jobs:
         env:
           S3_URL: ${{ secrets.S3_URL_PROOFS }}
           S3_REGION: ${{ secrets.S3_REGION_PROOFS }}
+          S3_PROPERTIES_URL: ${{ secrets.S3_PROPERTIES_URL_PROOFS }}
+          S3_PROPERTIES_REGION: ${{ secrets.S3_PROPERTIES_REGION_PROOFS }}

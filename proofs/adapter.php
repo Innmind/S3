@@ -29,8 +29,8 @@ return static function() {
 
     $os = Resilient::of(OSFactory::build());
     $bucket = Factory::of($os)->build(
-        Url::of(\getenv('S3_URL') ?? throw new Exception('Env var missing')),
-        Region::of(\getenv('S3_REGION') ?? throw new Exception('Env var missing')),
+        Url::of(\getenv('S3_PROPERTIES_URL') ?? throw new Exception('Env var missing')),
+        Region::of(\getenv('S3_PROPERTIES_REGION') ?? throw new Exception('Env var missing')),
     );
 
     yield properties(
