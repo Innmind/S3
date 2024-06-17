@@ -119,11 +119,14 @@ final class OverHttp implements Bucket
             throw new LogicException("Only a directory can be listed, got '{$path->toString()}'");
         }
 
-        if ($path->equals(Path::none())) {
-            $query = 'delimiter=%2F&list-type=2';
-            $prefixLength = 0;
-        } else {
-            $query = 'delimiter=%2F&list-type=2&prefix='.\rawurlencode($path->toString());
+        $query = [
+            'delimiter' => '/',
+            'list-type' => 2,
+        ];
+        $prefixLength = 0;
+
+        if (!$path->equals(Path::none())) {
+            $query['prefix'] = $path->toString();
             $prefixLength = Str::of($path->toString(), Str\Encoding::ascii)->length();
         }
 
@@ -144,18 +147,28 @@ final class OverHttp implements Bucket
      */
     private function paginate(
         Path $path,
-        string $query,
+        array $query,
         string $next = null,
     ): Sequence {
         if (\is_string($next)) {
-            $next = '&continuation-token='.$next;
+            $next = ['continuation-token' => $next];
+        } else {
+            $next = [];
         }
 
         return ($this->fulfill)($this->request(
             Method::get,
             $this->bucket->path(),
             null,
-            Query::of($query.(string) $next),
+            Query::of(\http_build_query(
+                [
+                    ...$next,
+                    ...$query,
+                ],
+                '',
+                '&',
+                \PHP_QUERY_RFC3986,
+            )),
         ))
             ->maybe()
             ->map(static fn($success) => $success->response()->body())
