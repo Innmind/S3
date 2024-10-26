@@ -104,7 +104,7 @@ final class OverHttp implements Bucket
     public function contains(Path $path): bool
     {
         if ($path->directory()) {
-            return !$this->list($path)->empty();
+            return !$this->enumerate($path)->empty();
         }
 
         return $this->get($path)->match(
@@ -114,6 +114,17 @@ final class OverHttp implements Bucket
     }
 
     public function list(Path $path): Sequence
+    {
+        return $this
+            ->enumerate($path)
+            ->exclude(static fn($found) => $found === '') // in case a folder is created without any file inside
+            ->map(Path::of(...));
+    }
+
+    /**
+     * @return Sequence<string>
+     */
+    private function enumerate(Path $path): Sequence
     {
         if (!$path->directory()) {
             throw new LogicException("Only a directory can be listed, got '{$path->toString()}'");
@@ -138,8 +149,7 @@ final class OverHttp implements Bucket
                     ->toEncoding(Str\Encoding::ascii)
                     ->drop($prefixLength)
                     ->toString(),
-            )
-            ->map(Path::of(...));
+            );
     }
 
     /**
