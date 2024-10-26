@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## 4.1.3 - 2024-10-26
 
 ### Fixed
 
