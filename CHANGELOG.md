@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Listing files inside an empty folder was throwing an error
+
 ## 4.1.2 - 2024-06-17
 
 ### Fixed
