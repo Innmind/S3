@@ -131,10 +131,13 @@ final class Adapter implements AdapterInterface
 
         if ($file instanceof Directory) {
             // Delete any file that may exist with the same name as the directory
+            $possibleFilePath = $root->resolve(
+                Path::of($file->name()->toString()),
+            );
             $_ = $this
                 ->bucket
-                ->get($path)
-                ->flatMap(fn() => $this->bucket->delete($path))
+                ->get($possibleFilePath)
+                ->flatMap(fn() => $this->bucket->delete($possibleFilePath))
                 ->match(
                     static fn() => null,
                     static fn() => null,
