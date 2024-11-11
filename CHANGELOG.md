@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.1.4 - 2024-11-11
+
+### Fixed
+
+- Uploading a file and then a directory with the same name didn't remove the file.
+- The list of files inside a directory was kept in memory.
+
 ## 4.1.3 - 2024-10-26
 
 ### Fixed
