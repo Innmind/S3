@@ -130,6 +130,15 @@ final class Adapter implements AdapterInterface
         }
 
         if ($file instanceof Directory) {
+            // Delete any file that may exist with the same name as the directory
+            $_ = $this
+                ->bucket
+                ->get($path)
+                ->flatMap(fn() => $this->bucket->delete($path))
+                ->match(
+                    static fn() => null,
+                    static fn() => null,
+                );
             $all = match ($this->keepEmptyDirectories) {
                 true => $file->all()->add(File::named(self::VOID_FILE, Content::none())),
                 false => $file->all(),
