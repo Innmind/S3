@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Uploading a file and then a directory with the same name didn't remove the file.
+
 ## 4.1.3 - 2024-10-26
 
 ### Fixed
