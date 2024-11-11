@@ -166,7 +166,7 @@ final class OverHttp implements Bucket
             $next = [];
         }
 
-        return Sequence::lazy(function() {
+        return Sequence::lazy(function() use ($path, $query, $next) {
             yield ($this->fulfill)($this->request(
                 Method::get,
                 $this->bucket->path(),
@@ -211,7 +211,7 @@ final class OverHttp implements Bucket
                                 ->keep(Instance::of(Element::class))
                                 ->map(static fn($token) => $token->content())
                                 ->match(
-                                    fn($token) => fn() => yield $this->paginate(
+                                    fn($token) => $this->paginate(
                                         $path,
                                         $query,
                                         $token,
