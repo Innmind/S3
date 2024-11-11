@@ -166,65 +166,65 @@ final class OverHttp implements Bucket
             $next = [];
         }
 
-        return ($this->fulfill)($this->request(
-            Method::get,
-            $this->bucket->path(),
-            null,
-            Query::of(\http_build_query(
-                [
-                    ...$next,
-                    ...$query,
-                ],
-                '',
-                '&',
-                \PHP_QUERY_RFC3986,
-            )),
-        ))
-            ->maybe()
-            ->map(static fn($success) => $success->response()->body())
-            ->flatMap($this->read)
-            ->keep(Instance::of(Document::class))
-            ->flatMap(static fn($document) => $document->children()->first())
-            ->map(static fn($list) => $list->children()->keep(Instance::of(Element::class)))
-            ->map(
-                fn($elements) => $elements
-                    ->filter(static fn($element) => $element->name() === 'Contents')
-                    ->flatMap(
-                        static fn($content) => $content
-                            ->children()
-                            ->keep(Instance::of(Element::class))
-                            ->filter(static fn($attribute) => $attribute->name() === 'Key')
-                            ->map(static fn($attribute) => $attribute->content()),
-                    )
-                    ->append(
-                        $elements
-                            ->filter(static fn($element) => $element->name() === 'CommonPrefixes')
-                            ->flatMap(static fn($prefixes) => $prefixes->children())
-                            ->keep(Instance::of(Element::class))
-                            ->filter(static fn($element) => $element->name() === 'Prefix')
-                            ->map(static fn($prefix) => $prefix->content()),
-                    )
-                    ->append(
-                        $elements
-                            ->find(static fn($element) => $element->name() === 'NextContinuationToken')
-                            ->keep(Instance::of(Element::class))
-                            ->map(static fn($token) => $token->content())
-                            ->match(
-                                fn($token) => Sequence::lazy(
-                                    fn() => yield $this->paginate(
+        return Sequence::lazy(function() {
+            yield ($this->fulfill)($this->request(
+                Method::get,
+                $this->bucket->path(),
+                null,
+                Query::of(\http_build_query(
+                    [
+                        ...$next,
+                        ...$query,
+                    ],
+                    '',
+                    '&',
+                    \PHP_QUERY_RFC3986,
+                )),
+            ))
+                ->maybe()
+                ->map(static fn($success) => $success->response()->body())
+                ->flatMap($this->read)
+                ->keep(Instance::of(Document::class))
+                ->flatMap(static fn($document) => $document->children()->first())
+                ->map(static fn($list) => $list->children()->keep(Instance::of(Element::class)))
+                ->map(
+                    fn($elements) => $elements
+                        ->filter(static fn($element) => $element->name() === 'Contents')
+                        ->flatMap(
+                            static fn($content) => $content
+                                ->children()
+                                ->keep(Instance::of(Element::class))
+                                ->filter(static fn($attribute) => $attribute->name() === 'Key')
+                                ->map(static fn($attribute) => $attribute->content()),
+                        )
+                        ->append(
+                            $elements
+                                ->filter(static fn($element) => $element->name() === 'CommonPrefixes')
+                                ->flatMap(static fn($prefixes) => $prefixes->children())
+                                ->keep(Instance::of(Element::class))
+                                ->filter(static fn($element) => $element->name() === 'Prefix')
+                                ->map(static fn($prefix) => $prefix->content()),
+                        )
+                        ->append(
+                            $elements
+                                ->find(static fn($element) => $element->name() === 'NextContinuationToken')
+                                ->keep(Instance::of(Element::class))
+                                ->map(static fn($token) => $token->content())
+                                ->match(
+                                    fn($token) => fn() => yield $this->paginate(
                                         $path,
                                         $query,
                                         $token,
                                     ),
-                                )->flatMap(static fn($elements) => $elements),
-                                static fn() => Sequence::of(),
-                            ),
-                    ),
-            )
-            // Use monad type juggling instead of matching to allow to schedule
-            // mutliple http calls at once
-            ->toSequence()
-            ->flatMap(static fn($paths) => $paths);
+                                    static fn() => Sequence::of(),
+                                ),
+                        ),
+                )
+                // Use monad type juggling instead of matching to allow to schedule
+                // mutliple http calls at once
+                ->toSequence()
+                ->flatMap(static fn($paths) => $paths);
+        })->flatMap(static fn($elements) => $elements);
     }
 
     /**
