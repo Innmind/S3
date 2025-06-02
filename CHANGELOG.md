@@ -11,6 +11,10 @@
 - `Innmind\S3\Bucket` is now a final class
 - `Innmind\S3\Filesystem\Adapter` has been renamed `Innmind\S3\Filesystem`
 
+### Removed
+
+- `Innmind\S3\Exception\*` classes
+
 ### Fixed
 
 - PHP `8.4` deprecations

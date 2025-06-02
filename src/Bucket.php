@@ -3,10 +3,7 @@ declare(strict_types = 1);
 
 namespace Innmind\S3;
 
-use Innmind\S3\{
-    Format\Amazon,
-    Exception\LogicException,
-};
+use Innmind\S3\Format\Amazon;
 use Innmind\Url\{
     Url,
     Path,
@@ -83,7 +80,7 @@ final class Bucket
     public function get(Path $path): Maybe
     {
         if ($path->directory()) {
-            throw new LogicException("A directory can't be retrieved, got '{$path->toString()}'");
+            throw new \LogicException("A directory can't be retrieved, got '{$path->toString()}'");
         }
 
         return ($this->fulfill)($this->request(Method::get, $path))
@@ -157,7 +154,7 @@ final class Bucket
     private function enumerate(Path $path): Sequence
     {
         if (!$path->directory()) {
-            throw new LogicException("Only a directory can be listed, got '{$path->toString()}'");
+            throw new \LogicException("Only a directory can be listed, got '{$path->toString()}'");
         }
 
         $query = [
