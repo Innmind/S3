@@ -10,6 +10,7 @@ use Innmind\TimeContinuum\Format;
  */
 final class AmazonTime implements Format
 {
+    #[\Override]
     public function toString(): string
     {
         return 'Ymd\THis\Z';

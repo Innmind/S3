@@ -10,6 +10,7 @@ use Innmind\TimeContinuum\Format;
  */
 final class AmazonDate implements Format
 {
+    #[\Override]
     public function toString(): string
     {
         return 'Ymd';
