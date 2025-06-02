@@ -76,6 +76,7 @@ final class OverHttp implements Bucket
         return new self($fulfill, $clock, $reader, $bucket, $region);
     }
 
+    #[\Override]
     public function get(Path $path): Maybe
     {
         if ($path->directory()) {
@@ -87,6 +88,7 @@ final class OverHttp implements Bucket
             ->map(static fn($success) => $success->response()->body());
     }
 
+    #[\Override]
     public function upload(Path $path, Content $content): Maybe
     {
         return ($this->fulfill)($this->request(Method::put, $path, $content))
@@ -94,6 +96,7 @@ final class OverHttp implements Bucket
             ->map(static fn() => new SideEffect);
     }
 
+    #[\Override]
     public function delete(Path $path): Maybe
     {
         return ($this->fulfill)($this->request(Method::delete, $path))
@@ -101,6 +104,7 @@ final class OverHttp implements Bucket
             ->map(static fn() => new SideEffect);
     }
 
+    #[\Override]
     public function contains(Path $path): bool
     {
         if ($path->directory()) {
@@ -113,6 +117,7 @@ final class OverHttp implements Bucket
         );
     }
 
+    #[\Override]
     public function list(Path $path): Sequence
     {
         return $this

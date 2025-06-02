@@ -59,11 +59,13 @@ final class Adapter implements AdapterInterface
         return new self($this->bucket, false);
     }
 
+    #[\Override]
     public function add(File|Directory $file): void
     {
         $this->upload(Path::none(), $file);
     }
 
+    #[\Override]
     public function get(Name $file): Maybe
     {
         if ($this->bucket->contains(Path::of($file->toString().'/'))) {
@@ -93,12 +95,14 @@ final class Adapter implements AdapterInterface
             });
     }
 
+    #[\Override]
     public function contains(Name $file): bool
     {
         return $this->bucket->contains(Path::of($file->toString())) ||
             $this->bucket->contains(Path::of($file->toString().'/'));
     }
 
+    #[\Override]
     public function remove(Name $file): void
     {
         $_ = $this
@@ -107,6 +111,7 @@ final class Adapter implements AdapterInterface
             ->foreach(static fn() => null); // force unwrapping the delete calls
     }
 
+    #[\Override]
     public function root(): Directory
     {
         return Directory::of(
@@ -120,10 +125,12 @@ final class Adapter implements AdapterInterface
         $path = $this->resolve($root, $file);
 
         if ($this->loaded->offsetExists($file)) {
+            /** @psalm-suppress PossiblyNullReference */
             if ($file instanceof File && $this->loaded[$file]->equals($path)) {
                 return;
             }
 
+            /** @psalm-suppress PossiblyNullReference */
             if ($file instanceof Directory && $this->loaded[$file]->equals(Path::of($path->toString().'/'))) {
                 return;
             }
