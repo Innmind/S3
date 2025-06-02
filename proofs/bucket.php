@@ -6,7 +6,6 @@ use Innmind\S3\{
     Bucket,
     Factory,
     Region,
-    Exception\LogicException,
 };
 use Innmind\OperatingSystem\{
     Factory as OSFactory,

@@ -2,10 +2,7 @@
 
 declare(strict_types = 1);
 
-use Innmind\S3\{
-    Region,
-    Exception\DomainException,
-};
+use Innmind\S3\Region;
 use Innmind\BlackBox\{
     Set,
     Tag,
