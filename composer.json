@@ -16,7 +16,7 @@
     },
     "require": {
         "php": "~8.2",
-        "innmind/foundation": "~1.0"
+        "innmind/foundation": "~1.1"
     },
     "autoload": {
         "psr-4": {
