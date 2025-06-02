@@ -42,24 +42,13 @@ use Innmind\Immutable\{
 
 final class Bucket
 {
-    private Transport $fulfill;
-    private Clock $clock;
-    private Reader $read;
-    private Url $bucket;
-    private Region $region;
-
     private function __construct(
-        Transport $fulfill,
-        Clock $clock,
-        Reader $reader,
-        Url $bucket,
-        Region $region,
+        private Transport $fulfill,
+        private Clock $clock,
+        private Reader $read,
+        private Url $bucket,
+        private Region $region,
     ) {
-        $this->fulfill = $fulfill;
-        $this->clock = $clock;
-        $this->read = $reader;
-        $this->bucket = $bucket;
-        $this->region = $region;
     }
 
     public static function of(
