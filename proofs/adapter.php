@@ -36,13 +36,13 @@ return static function() {
     yield properties(
         'S3',
         Adapter::properties(),
-        Set::call(static fn() => Filesystem\Adapter::of($bucket)),
+        Set::call(static fn() => Filesystem::of($bucket)),
     )->tag(Tag::local, Tag::ci);
 
     foreach (Adapter::alwaysApplicable() as $property) {
         yield property(
             $property,
-            Set::call(static fn() => Filesystem\Adapter::of($bucket)),
+            Set::call(static fn() => Filesystem::of($bucket)),
         )
             ->named('S3')
             ->tag(Tag::local, Tag::ci);

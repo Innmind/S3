@@ -7,6 +7,13 @@
 - Requires `innmind/foundation:~1.0`
 - `Innmind\S3\Bucket::upload()` now returns an `Innmind\Immutable\Attempt<Innmind\Immutable\SideEffect>`
 - `Innmind\S3\Bucket::delete()` now returns an `Innmind\Immutable\Attempt<Innmind\Immutable\SideEffect>`
+- `Innmind\S3\Format\*` classes have grouped into the enum `Innmind\S3\Format\Amazon`
+- `Innmind\S3\Bucket` is now a final class
+- `Innmind\S3\Filesystem\Adapter` has been renamed `Innmind\S3\Filesystem`
+
+### Removed
+
+- `Innmind\S3\Exception\*` classes
 
 ### Fixed
 
