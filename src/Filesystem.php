@@ -1,11 +1,10 @@
 <?php
 declare(strict_types = 1);
 
-namespace Innmind\S3\Filesystem;
+namespace Innmind\S3;
 
-use Innmind\S3\Bucket;
 use Innmind\Filesystem\{
-    Adapter as AdapterInterface,
+    Adapter,
     File,
     File\Content,
     Directory,
@@ -21,7 +20,7 @@ use Innmind\Immutable\{
     SideEffect,
 };
 
-final class Adapter implements AdapterInterface
+final class Filesystem implements Adapter
 {
     private const VOID_FILE = '.keep-empty-directory';
 
