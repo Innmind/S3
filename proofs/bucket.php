@@ -6,11 +6,10 @@ use Innmind\S3\{
     Bucket,
     Factory,
     Region,
-    Exception\LogicException,
 };
 use Innmind\OperatingSystem\{
     Factory as OSFactory,
-    OperatingSystem\Resilient,
+    Config\Resilient,
 };
 use Innmind\Filesystem\File\Content;
 use Innmind\Url\{
@@ -34,14 +33,14 @@ return static function() {
         $dotenv->load($file);
     }
 
-    $os = Resilient::of(OSFactory::build());
+    $os = OSFactory::build()->map(Resilient::new());
     $bucket = Factory::of($os)->build(
         Url::of(\getenv('S3_URL') ?? throw new Exception('Env var missing')),
         Region::of(\getenv('S3_REGION') ?? throw new Exception('Env var missing')),
     );
 
     $names = Name::any()->map(static fn($name) => $name->toString());
-    $paths = Set\Sequence::of($names)
+    $paths = Set::sequence($names)
         ->between(1, 4) // above 4*255 chars the S3 server rejects the path
         ->map(static fn($parts) => \implode('/', $parts));
 
@@ -74,7 +73,7 @@ return static function() {
         'Bucket over HTTP upload',
         given(
             $paths->map(Path::of(...)),
-            Set\Unicode::strings()->map(Content::ofString(...)),
+            Set::strings()->unicode()->map(Content::ofString(...)),
         ),
         static function($assert, $path, $content) use ($bucket) {
             $assert
@@ -122,8 +121,8 @@ return static function() {
             $names,
             $names,
             $names,
-            Set\Unicode::strings()->map(Content::ofString(...)),
-            Set\Unicode::strings()->map(Content::ofString(...)),
+            Set::strings()->unicode()->map(Content::ofString(...)),
+            Set::strings()->unicode()->map(Content::ofString(...)),
         ),
         static function($assert, $directory1, $directory2, $file, $content1, $content2) use ($bucket) {
             $assert
@@ -180,10 +179,10 @@ return static function() {
     yield proof(
         'Bucket over HTTP list files in root directory',
         given(
-            Set\Sequence::of($names->map(Path::of(...)))->atMost(5), // max 5 to speed up the proof
-            Set\Sequence::of($names)->atMost(5), // max 5 to speed up the proof
+            Set::sequence($names->map(Path::of(...)))->atMost(5), // max 5 to speed up the proof
+            Set::sequence($names)->atMost(5), // max 5 to speed up the proof
             $names,
-            Set\Unicode::strings()->map(Content::ofString(...)),
+            Set::strings()->unicode()->map(Content::ofString(...)),
         ),
         static function($assert, $files, $directories, $name, $content) use ($bucket) {
             foreach ($files as $file) {
@@ -245,9 +244,9 @@ return static function() {
     yield proof(
         'Bucket over HTTP can check if directory exists',
         given(
-            Set\Sequence::of($names)->between(1, 3),
+            Set::sequence($names)->between(1, 3),
             $names,
-            Set\Unicode::strings()->map(Content::ofString(...)),
+            Set::strings()->unicode()->map(Content::ofString(...)),
         ),
         static function($assert, $path, $name, $content) use ($bucket) {
             $filePath = Path::of(\implode('/', $path).'/'.$name);

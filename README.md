@@ -39,7 +39,7 @@ $file = $bucket->get(Path::of('some-file.txt'))->match(
 );
 $bucket->upload(Path::of('some-other-name.txt'), $file)->match( // essentially this will copy the file
     static fn() => null, // everything ok
-    static fn() => throw new \RuntimeException('Failed to upload file'),
+    static fn(\Throwable $e) => throw $e,
 );
 ```
 
@@ -50,11 +50,11 @@ use Innmind\S3\Filesystem;
 use Innmind\Filesystem\Name;
 
 $data = $os->filsystem()->mount(Path::of('/var/data'));
-$s3 = Filesystem\Adapter::of($bucket);
+$s3 = Filesystem::of($bucket);
 $data
     ->get(Name::of('images'))
     ->match(
-        $s3->add(...),
+        static fn($file) => $s3->add($file)->unwrap(),
         static fn() => null, // do something if there is no images
     );
 ```

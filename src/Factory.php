@@ -4,7 +4,7 @@ declare(strict_types = 1);
 namespace Innmind\S3;
 
 use Innmind\OperatingSystem\OperatingSystem;
-use Innmind\Xml\Reader\Reader;
+use Innmind\Xml\Reader;
 use Innmind\Url\Url;
 
 final class Factory
@@ -25,7 +25,7 @@ final class Factory
 
     public function build(Url $bucket, Region $region): Bucket
     {
-        return Bucket\OverHttp::of(
+        return Bucket::of(
             $this->os->remote()->http(),
             $this->os->clock(),
             $this->reader,

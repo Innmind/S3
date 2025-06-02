@@ -1,14 +1,10 @@
 <?php
 declare(strict_types = 1);
 
-namespace Innmind\S3\Filesystem;
+namespace Innmind\S3;
 
-use Innmind\S3\{
-    Bucket,
-    Exception\RuntimeException,
-};
 use Innmind\Filesystem\{
-    Adapter as AdapterInterface,
+    Adapter,
     File,
     File\Content,
     Directory,
@@ -17,12 +13,14 @@ use Innmind\Filesystem\{
 use Innmind\Url\Path;
 use Innmind\Immutable\{
     Sequence,
+    Set,
     Str,
+    Attempt,
     Maybe,
     SideEffect,
 };
 
-final class Adapter implements AdapterInterface
+final class Filesystem implements Adapter
 {
     private const VOID_FILE = '.keep-empty-directory';
 
@@ -59,11 +57,13 @@ final class Adapter implements AdapterInterface
         return new self($this->bucket, false);
     }
 
-    public function add(File|Directory $file): void
+    #[\Override]
+    public function add(File|Directory $file): Attempt
     {
-        $this->upload(Path::none(), $file);
+        return $this->upload(Path::none(), $file);
     }
 
+    #[\Override]
     public function get(Name $file): Maybe
     {
         if ($this->bucket->contains(Path::of($file->toString().'/'))) {
@@ -93,20 +93,23 @@ final class Adapter implements AdapterInterface
             });
     }
 
+    #[\Override]
     public function contains(Name $file): bool
     {
         return $this->bucket->contains(Path::of($file->toString())) ||
             $this->bucket->contains(Path::of($file->toString().'/'));
     }
 
-    public function remove(Name $file): void
+    #[\Override]
+    public function remove(Name $file): Attempt
     {
-        $_ = $this
+        return $this
             ->doRemove(Path::of($file->toString()))
-            ->flatMap(static fn($call) => $call->toSequence())
-            ->foreach(static fn() => null); // force unwrapping the delete calls
+            ->sink(SideEffect::identity())
+            ->attempt(static fn($_, $call) => $call);
     }
 
+    #[\Override]
     public function root(): Directory
     {
         return Directory::of(
@@ -115,75 +118,40 @@ final class Adapter implements AdapterInterface
         );
     }
 
-    private function upload(Path $root, File|Directory $file): void
+    /**
+     * @return Attempt<SideEffect>
+     */
+    private function upload(Path $root, File|Directory $file): Attempt
     {
         $path = $this->resolve($root, $file);
 
         if ($this->loaded->offsetExists($file)) {
+            /** @psalm-suppress PossiblyNullReference */
             if ($file instanceof File && $this->loaded[$file]->equals($path)) {
-                return;
+                return Attempt::result(SideEffect::identity());
             }
 
+            /** @psalm-suppress PossiblyNullReference */
             if ($file instanceof Directory && $this->loaded[$file]->equals(Path::of($path->toString().'/'))) {
-                return;
+                return Attempt::result(SideEffect::identity());
             }
         }
 
         if ($file instanceof Directory) {
-            // Delete any file that may exist with the same name as the directory
-            $possibleFilePath = $root->resolve(
-                Path::of($file->name()->toString()),
-            );
-            $_ = $this
-                ->bucket
-                ->get($possibleFilePath)
-                ->flatMap(fn() => $this->bucket->delete($possibleFilePath))
-                ->match(
-                    static fn() => null,
-                    static fn() => null,
-                );
-            $all = match ($this->keepEmptyDirectories) {
-                true => $file->all()->add(File::named(self::VOID_FILE, Content::none())),
-                false => $file->all(),
-            };
-            $persisted = $all
-                ->map(function($file) use ($path) {
-                    $this->upload($path, $file);
-
-                    return $file;
-                })
-                ->map(static fn($file) => $file->name()->toString())
-                ->memoize()
-                ->toSet();
-            $_ = Sequence::of(...$file->removed()->toList())
-                ->filter(static fn($file) => !$persisted->contains($file->toString()))
-                ->map(fn($file) => $this->resolve(
-                    $path,
-                    File::of($file, Content::none()), // wrap name as a file because we can't know if the name represent a file or name
-                ))
-                ->flatMap($this->doRemove(...))
-                ->flatMap(static fn($call) => $call->toSequence())
-                ->foreach(static fn() => null); // force unwrapping the delete calls
-
-            return;
+            return $this
+                ->removeEventualFileWithSameName($root, $file)
+                ->flatMap(fn() => $this->uploadFiles($path, $file))
+                ->flatMap(fn($uploaded) => $this->removeFiles($uploaded, $path, $file));
         }
 
-        $_ = $this
+        return $this
             ->doRemove($path)
-            ->flatMap(static fn($call) => $call->toSequence())
-            ->foreach(static fn() => null); // force unwrapping the delete calls
-        // the ->match() is here to force unwrap the monad to make sure the
-        // underlying operation is executed
-        $_ = $this
-            ->bucket
-            ->upload(
+            ->sink(SideEffect::identity())
+            ->attempt(static fn($_, $call) => $call)
+            ->flatMap(fn() => $this->bucket->upload(
                 $path,
                 $file->content(),
-            )
-            ->match(
-                static fn() => null,
-                static fn() => throw new RuntimeException("Failed to upload '{$path->toString()}'"),
-            );
+            ));
     }
 
     private function resolve(Path $root, File|Directory $file): Path
@@ -259,7 +227,7 @@ final class Adapter implements AdapterInterface
     }
 
     /**
-     * @return Sequence<Maybe<SideEffect>>
+     * @return Sequence<Attempt<SideEffect>>
      */
     private function doRemove(Path $path): Sequence
     {
@@ -270,15 +238,78 @@ final class Adapter implements AdapterInterface
             ->list($directory)
             ->flatMap(fn($path) => $this->doRemove($directory->resolve($path)))
             ->append(Sequence::lazy(function() use ($path) {
-                // We use a lazy sequence heret to make sure this delete call is
+                // We use a lazy sequence here to make sure this delete call is
                 // made after the recursive call to doRemove() above
-                /** @var Maybe<SideEffect> */
-                $remove = $this
-                    ->bucket
-                    ->delete($path)
-                    ->otherwise(static fn() => throw new RuntimeException("Failed to remove '{$path->toString()}'"));
-
-                yield $remove;
+                yield $this->bucket->delete($path);
             }));
+    }
+
+    /**
+     * @return Attempt<SideEffect>
+     */
+    private function removeEventualFileWithSameName(
+        Path $root,
+        Directory $directory,
+    ): Attempt {
+        // Delete any file that may exist with the same name as the directory
+        $possibleFilePath = $root->resolve(
+            Path::of($directory->name()->toString()),
+        );
+
+        return $this
+            ->bucket
+            ->get($possibleFilePath)
+            ->attempt(static fn() => new \Exception('Discarded error'))
+            ->eitherWay(
+                fn() => $this->bucket->delete($possibleFilePath),
+                static fn() => Attempt::result(SideEffect::identity()),
+            );
+    }
+
+    /**
+     * @return Attempt<Set<non-empty-string>>
+     */
+    private function uploadFiles(
+        Path $path,
+        Directory $directory,
+    ): Attempt {
+        $all = match ($this->keepEmptyDirectories) {
+            true => $directory->all()->add(File::named(self::VOID_FILE, Content::none())),
+            false => $directory->all(),
+        };
+
+        /** @var Set<non-empty-string> */
+        $uploaded = Set::of();
+
+        return $all
+            ->sink($uploaded)
+            ->attempt(
+                fn($uploaded, $file) => $this
+                    ->upload($path, $file)
+                    ->map(static fn() => $file->name()->toString())
+                    ->map($uploaded),
+            )
+            ->memoize();
+    }
+
+    /**
+     * @param Set<non-empty-string> $uploaded
+     *
+     * @return Attempt<SideEffect>
+     */
+    private function removeFiles(
+        Set $uploaded,
+        Path $path,
+        Directory $directory,
+    ): Attempt {
+        return Sequence::of(...$directory->removed()->toList())
+            ->filter(static fn($file) => !$uploaded->contains($file->toString()))
+            ->map(fn($file) => $this->resolve(
+                $path,
+                File::of($file, Content::none()), // wrap name as a file because we can't know if the name represent a file or directory
+            ))
+            ->flatMap($this->doRemove(...))
+            ->sink(SideEffect::identity())
+            ->attempt(static fn($_, $call) => $call);
     }
 }
