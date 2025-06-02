@@ -19,22 +19,23 @@ use Innmind\HttpTransport\Transport;
 use Innmind\Filesystem\File\Content;
 use Innmind\TimeContinuum\{
     Clock,
-    Earth\Timezone\UTC,
+    Offset,
 };
 use Innmind\Http\{
     Request,
     Method,
     ProtocolVersion,
     Headers,
-    Header\Header,
-    Header\Value\Value,
+    Header,
+    Header\Value,
+    Header\ContentLength,
 };
 use Innmind\Hash\Hash;
-use Innmind\Http\Header\ContentLength;
 use Innmind\Xml\{
     Reader,
     Element,
-    Node\Document,
+    Document,
+    Node,
 };
 use Innmind\Immutable\{
     Str,
@@ -186,34 +187,42 @@ final class OverHttp implements Bucket
                     \PHP_QUERY_RFC3986,
                 )),
             ))
-                ->maybe()
+                ->attempt(static fn() => new \RuntimeException('Failed to retrieve path list'))
                 ->map(static fn($success) => $success->response()->body())
                 ->flatMap($this->read)
+                ->maybe()
                 ->keep(Instance::of(Document::class))
                 ->flatMap(static fn($document) => $document->children()->first())
+                ->keep(Instance::of(Element::class))
                 ->map(static fn($list) => $list->children()->keep(Instance::of(Element::class)))
                 ->map(
                     fn($elements) => $elements
-                        ->filter(static fn($element) => $element->name() === 'Contents')
+                        ->filter(static fn($element) => $element->name()->toString() === 'Contents')
                         ->flatMap(
                             static fn($content) => $content
                                 ->children()
                                 ->keep(Instance::of(Element::class))
-                                ->filter(static fn($attribute) => $attribute->name() === 'Key')
+                                ->filter(static fn($attribute) => $attribute->name()->toString() === 'Key')
+                                ->flatMap(static fn($attribute) => $attribute->children())
+                                ->keep(Instance::of(Node::class))
                                 ->map(static fn($attribute) => $attribute->content()),
                         )
                         ->append(
                             $elements
-                                ->filter(static fn($element) => $element->name() === 'CommonPrefixes')
+                                ->filter(static fn($element) => $element->name()->toString() === 'CommonPrefixes')
                                 ->flatMap(static fn($prefixes) => $prefixes->children())
                                 ->keep(Instance::of(Element::class))
-                                ->filter(static fn($element) => $element->name() === 'Prefix')
+                                ->filter(static fn($element) => $element->name()->toString() === 'Prefix')
+                                ->flatMap(static fn($prefix) => $prefix->children())
+                                ->keep(Instance::of(Node::class))
                                 ->map(static fn($prefix) => $prefix->content()),
                         )
                         ->append(
                             $elements
-                                ->find(static fn($element) => $element->name() === 'NextContinuationToken')
+                                ->find(static fn($element) => $element->name()->toString() === 'NextContinuationToken')
                                 ->keep(Instance::of(Element::class))
+                                ->flatMap(static fn($token) => $token->children()->first())
+                                ->keep(Instance::of(Node::class))
                                 ->map(static fn($token) => $token->content())
                                 ->match(
                                     fn($token) => $this->paginate(
@@ -244,7 +253,7 @@ final class OverHttp implements Bucket
         ?Query $query = null,
     ): Request {
         $content ??= Content::none();
-        $now = $this->clock->now()->changeTimezone(new UTC);
+        $now = $this->clock->now()->changeOffset(Offset::utc());
         $url = $this
             ->bucket
             ->withAuthority($this->bucket->authority()->withoutUserInformation())
@@ -254,8 +263,8 @@ final class OverHttp implements Bucket
             $url = $url->withQuery($query);
         }
 
-        $amazonDate = $now->format(new AmazonDate);
-        $amazonTime = $now->format(new AmazonTime);
+        $amazonDate = $now->format(AmazonDate::new());
+        $amazonTime = $now->format(AmazonTime::new());
         $contentHash = Hash::sha256
             ->ofContent($content)
             ->hex();
@@ -318,9 +327,9 @@ final class OverHttp implements Bucket
             ->user()
             ->toString();
         $headers = Headers::of(
-            new Header('x-amz-date', new Value($amazonTime)),
-            new Header('x-amz-content-sha256', new Value($contentHash)),
-            new Header('Authorization', new Value(
+            Header::of('x-amz-date', Value::of($amazonTime)),
+            Header::of('x-amz-content-sha256', Value::of($contentHash)),
+            Header::of('Authorization', Value::of(
                 "AWS4-HMAC-SHA256 Credential=$user/$scope,SignedHeaders=$headerNames,Signature=$signature",
             )),
         );

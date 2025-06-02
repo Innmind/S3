@@ -4,7 +4,7 @@ declare(strict_types = 1);
 namespace Innmind\S3;
 
 use Innmind\OperatingSystem\OperatingSystem;
-use Innmind\Xml\Reader\Reader;
+use Innmind\Xml\Reader;
 use Innmind\Url\Url;
 
 final class Factory

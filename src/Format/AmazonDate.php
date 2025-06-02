@@ -5,14 +5,13 @@ namespace Innmind\S3\Format;
 
 use Innmind\TimeContinuum\Format;
 
-/**
- * @psalm-immutable
- */
-final class AmazonDate implements Format
+final class AmazonDate
 {
-    #[\Override]
-    public function toString(): string
+    /**
+     * @psalm-pure
+     */
+    public static function new(): Format
     {
-        return 'Ymd';
+        return Format::of('Ymd');
     }
 }

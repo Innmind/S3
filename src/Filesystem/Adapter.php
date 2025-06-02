@@ -18,6 +18,7 @@ use Innmind\Url\Path;
 use Innmind\Immutable\{
     Sequence,
     Str,
+    Attempt,
     Maybe,
     SideEffect,
 };
@@ -60,9 +61,9 @@ final class Adapter implements AdapterInterface
     }
 
     #[\Override]
-    public function add(File|Directory $file): void
+    public function add(File|Directory $file): Attempt
     {
-        $this->upload(Path::none(), $file);
+        return $this->upload(Path::none(), $file);
     }
 
     #[\Override]
@@ -103,12 +104,16 @@ final class Adapter implements AdapterInterface
     }
 
     #[\Override]
-    public function remove(Name $file): void
+    public function remove(Name $file): Attempt
     {
-        $_ = $this
+        return $this
             ->doRemove(Path::of($file->toString()))
-            ->flatMap(static fn($call) => $call->toSequence())
-            ->foreach(static fn() => null); // force unwrapping the delete calls
+            ->sink(SideEffect::identity())
+            ->maybe(static fn($_, $call) => $call)
+            ->attempt(static fn() => new \RuntimeException(\sprintf(
+                'Failed to remove %s',
+                $file->toString(),
+            )));
     }
 
     #[\Override]
@@ -120,19 +125,22 @@ final class Adapter implements AdapterInterface
         );
     }
 
-    private function upload(Path $root, File|Directory $file): void
+    /**
+     * @return Attempt<SideEffect>
+     */
+    private function upload(Path $root, File|Directory $file): Attempt
     {
         $path = $this->resolve($root, $file);
 
         if ($this->loaded->offsetExists($file)) {
             /** @psalm-suppress PossiblyNullReference */
             if ($file instanceof File && $this->loaded[$file]->equals($path)) {
-                return;
+                return Attempt::result(SideEffect::identity());
             }
 
             /** @psalm-suppress PossiblyNullReference */
             if ($file instanceof Directory && $this->loaded[$file]->equals(Path::of($path->toString().'/'))) {
-                return;
+                return Attempt::result(SideEffect::identity());
             }
         }
 
@@ -155,42 +163,37 @@ final class Adapter implements AdapterInterface
             };
             $persisted = $all
                 ->map(function($file) use ($path) {
-                    $this->upload($path, $file);
+                    $this->upload($path, $file)->unwrap();
 
                     return $file;
                 })
                 ->map(static fn($file) => $file->name()->toString())
                 ->memoize()
                 ->toSet();
-            $_ = Sequence::of(...$file->removed()->toList())
+
+            return Sequence::of(...$file->removed()->toList())
                 ->filter(static fn($file) => !$persisted->contains($file->toString()))
                 ->map(fn($file) => $this->resolve(
                     $path,
                     File::of($file, Content::none()), // wrap name as a file because we can't know if the name represent a file or name
                 ))
                 ->flatMap($this->doRemove(...))
-                ->flatMap(static fn($call) => $call->toSequence())
-                ->foreach(static fn() => null); // force unwrapping the delete calls
-
-            return;
+                ->sink(SideEffect::identity())
+                ->maybe(static fn($_, $call) => $call)
+                ->attempt(static fn() => new \RuntimeException('Failed to remove files'));
         }
 
-        $_ = $this
+        return $this
             ->doRemove($path)
-            ->flatMap(static fn($call) => $call->toSequence())
-            ->foreach(static fn() => null); // force unwrapping the delete calls
-        // the ->match() is here to force unwrap the monad to make sure the
-        // underlying operation is executed
-        $_ = $this
-            ->bucket
-            ->upload(
+            ->sink(SideEffect::identity())
+            ->maybe(static fn($_, $call) => $call)
+            ->flatMap(fn() => $this->bucket->upload(
                 $path,
                 $file->content(),
-            )
-            ->match(
-                static fn() => null,
-                static fn() => throw new RuntimeException("Failed to upload '{$path->toString()}'"),
-            );
+            ))
+            ->attempt(static fn() => new RuntimeException(
+                "Failed to upload '{$path->toString()}'",
+            ));
     }
 
     private function resolve(Path $root, File|Directory $file): Path
@@ -277,7 +280,7 @@ final class Adapter implements AdapterInterface
             ->list($directory)
             ->flatMap(fn($path) => $this->doRemove($directory->resolve($path)))
             ->append(Sequence::lazy(function() use ($path) {
-                // We use a lazy sequence heret to make sure this delete call is
+                // We use a lazy sequence here to make sure this delete call is
                 // made after the recursive call to doRemove() above
                 /** @var Maybe<SideEffect> */
                 $remove = $this
