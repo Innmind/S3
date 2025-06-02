@@ -8,7 +8,7 @@ use Innmind\S3\{
 };
 use Innmind\OperatingSystem\{
     Factory as OSFactory,
-    OperatingSystem\Resilient,
+    Config\Resilient,
 };
 use Innmind\Url\Url;
 use Properties\Innmind\Filesystem\Adapter;
@@ -27,7 +27,7 @@ return static function() {
         $dotenv->load($file);
     }
 
-    $os = Resilient::of(OSFactory::build());
+    $os = OSFactory::build()->map(Resilient::new());
     $bucket = Factory::of($os)->build(
         Url::of(\getenv('S3_PROPERTIES_URL') ?? throw new Exception('Env var missing')),
         Region::of(\getenv('S3_PROPERTIES_REGION') ?? throw new Exception('Env var missing')),
