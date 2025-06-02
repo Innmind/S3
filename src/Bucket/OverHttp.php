@@ -40,6 +40,7 @@ use Innmind\Xml\{
 use Innmind\Immutable\{
     Str,
     Sequence,
+    Attempt,
     Maybe,
     SideEffect,
     Predicate\Instance,
@@ -90,18 +91,26 @@ final class OverHttp implements Bucket
     }
 
     #[\Override]
-    public function upload(Path $path, Content $content): Maybe
+    public function upload(Path $path, Content $content): Attempt
     {
         return ($this->fulfill)($this->request(Method::put, $path, $content))
-            ->maybe()
+            ->attempt(static fn($error) => new \RuntimeException(\sprintf(
+                'Failed to upload %s (error %s)',
+                $path->toString(),
+                $error::class,
+            )))
             ->map(static fn() => new SideEffect);
     }
 
     #[\Override]
-    public function delete(Path $path): Maybe
+    public function delete(Path $path): Attempt
     {
         return ($this->fulfill)($this->request(Method::delete, $path))
-            ->maybe()
+            ->attempt(static fn($error) => new \RuntimeException(\sprintf(
+                'Failed to delete %s (error %s)',
+                $path->toString(),
+                $error::class,
+            )))
             ->map(static fn() => new SideEffect);
     }
 

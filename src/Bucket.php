@@ -8,6 +8,7 @@ use Innmind\Filesystem\File\Content;
 use Innmind\Immutable\{
     Sequence,
     Maybe,
+    Attempt,
     SideEffect,
 };
 
@@ -23,16 +24,16 @@ interface Bucket
     /**
      * Path must be relative
      *
-     * @return Maybe<SideEffect>
+     * @return Attempt<SideEffect>
      */
-    public function upload(Path $path, Content $content): Maybe;
+    public function upload(Path $path, Content $content): Attempt;
 
     /**
      * Path must be relative
      *
-     * @return Maybe<SideEffect>
+     * @return Attempt<SideEffect>
      */
-    public function delete(Path $path): Maybe;
+    public function delete(Path $path): Attempt;
 
     /**
      * Path must be relative

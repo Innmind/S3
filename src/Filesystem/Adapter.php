@@ -3,10 +3,7 @@ declare(strict_types = 1);
 
 namespace Innmind\S3\Filesystem;
 
-use Innmind\S3\{
-    Bucket,
-    Exception\RuntimeException,
-};
+use Innmind\S3\Bucket;
 use Innmind\Filesystem\{
     Adapter as AdapterInterface,
     File,
@@ -110,11 +107,7 @@ final class Adapter implements AdapterInterface
         return $this
             ->doRemove(Path::of($file->toString()))
             ->sink(SideEffect::identity())
-            ->maybe(static fn($_, $call) => $call)
-            ->attempt(static fn() => new \RuntimeException(\sprintf(
-                'Failed to remove %s',
-                $file->toString(),
-            )));
+            ->attempt(static fn($_, $call) => $call);
     }
 
     #[\Override]
@@ -155,13 +148,10 @@ final class Adapter implements AdapterInterface
         return $this
             ->doRemove($path)
             ->sink(SideEffect::identity())
-            ->maybe(static fn($_, $call) => $call)
+            ->attempt(static fn($_, $call) => $call)
             ->flatMap(fn() => $this->bucket->upload(
                 $path,
                 $file->content(),
-            ))
-            ->attempt(static fn() => new RuntimeException(
-                "Failed to upload '{$path->toString()}'",
             ));
     }
 
@@ -238,7 +228,7 @@ final class Adapter implements AdapterInterface
     }
 
     /**
-     * @return Sequence<Maybe<SideEffect>>
+     * @return Sequence<Attempt<SideEffect>>
      */
     private function doRemove(Path $path): Sequence
     {
@@ -251,13 +241,7 @@ final class Adapter implements AdapterInterface
             ->append(Sequence::lazy(function() use ($path) {
                 // We use a lazy sequence here to make sure this delete call is
                 // made after the recursive call to doRemove() above
-                /** @var Maybe<SideEffect> */
-                $remove = $this
-                    ->bucket
-                    ->delete($path)
-                    ->otherwise(static fn() => throw new RuntimeException("Failed to remove '{$path->toString()}'"));
-
-                yield $remove;
+                yield $this->bucket->delete($path);
             }));
     }
 
@@ -276,11 +260,11 @@ final class Adapter implements AdapterInterface
         return $this
             ->bucket
             ->get($possibleFilePath)
+            ->attempt(static fn() => new \Exception('Discarded error'))
             ->eitherWay(
                 fn() => $this->bucket->delete($possibleFilePath),
-                static fn() => Maybe::just(SideEffect::identity()),
-            )
-            ->attempt(static fn() => new \RuntimeException('Failed to remove file with the same name'));
+                static fn() => Attempt::result(SideEffect::identity()),
+            );
     }
 
     /**
@@ -327,7 +311,6 @@ final class Adapter implements AdapterInterface
             ))
             ->flatMap($this->doRemove(...))
             ->sink(SideEffect::identity())
-            ->maybe(static fn($_, $call) => $call)
-            ->attempt(static fn() => new \RuntimeException('Failed to remove files'));
+            ->attempt(static fn($_, $call) => $call);
     }
 }
