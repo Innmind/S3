@@ -22,7 +22,7 @@ return static function() {
 
     yield proof(
         'Throw when region contains uppercase letters',
-        given(Set\Elements::of(...\range('A', 'Z'))),
+        given(Set::of(...\range('A', 'Z'))),
         static fn($assert, $letter) => $assert->throws(
             static fn() => Region::of($letter.$letter.$letter),
             DomainException::class,
@@ -31,7 +31,7 @@ return static function() {
 
     yield proof(
         'Throw when region not matching expected format',
-        given(Set\Unicode::strings()->filter(static function($region) {
+        given(Set::strings()->unicode()->filter(static function($region) {
             return !\preg_match('~^[a-z0-9\-]+$~', $region);
         })),
         static fn($assert, $region) => $assert->throws(
@@ -43,7 +43,7 @@ return static function() {
 
     yield proof(
         'Region string cast',
-        given(Set\Elements::of('us-east1', 'eu-west', 'fr-par')),
+        given(Set::of('us-east1', 'eu-west', 'fr-par')),
         static fn($assert, $region) => $assert->same(
             $region,
             Region::of($region)->toString(),
@@ -52,10 +52,10 @@ return static function() {
 
     yield proof(
         'Region accepted values',
-        given(Set\Sequence::of(
-            Set\Strings::madeOf(
-                Set\Chars::lowercaseLetter(),
-                Set\Chars::number(),
+        given(Set::sequence(
+            Set::strings()->madeOf(
+                Set::strings()->chars()->lowercaseLetter(),
+                Set::strings()->chars()->number(),
             )->atLeast(1),
         )->atLeast(1)),
         static fn($assert, $parts) => $assert->not()->throws(
