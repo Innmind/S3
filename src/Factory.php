@@ -25,7 +25,7 @@ final class Factory
 
     public function build(Url $bucket, Region $region): Bucket
     {
-        return Bucket\OverHttp::of(
+        return Bucket::of(
             $this->os->remote()->http(),
             $this->os->clock(),
             $this->reader,
