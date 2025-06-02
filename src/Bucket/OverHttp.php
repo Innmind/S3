@@ -6,8 +6,7 @@ namespace Innmind\S3\Bucket;
 use Innmind\S3\{
     Bucket,
     Region,
-    Format\AmazonDate,
-    Format\AmazonTime,
+    Format\Amazon,
     Exception\LogicException,
 };
 use Innmind\Url\{
@@ -272,8 +271,8 @@ final class OverHttp implements Bucket
             $url = $url->withQuery($query);
         }
 
-        $amazonDate = $now->format(AmazonDate::new());
-        $amazonTime = $now->format(AmazonTime::new());
+        $amazonDate = $now->format(Amazon::date);
+        $amazonTime = $now->format(Amazon::time);
         $contentHash = Hash::sha256
             ->ofContent($content)
             ->hex();
