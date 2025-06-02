@@ -17,6 +17,7 @@ use Innmind\Filesystem\{
 use Innmind\Url\Path;
 use Innmind\Immutable\{
     Sequence,
+    Set,
     Str,
     Attempt,
     Maybe,
@@ -145,42 +146,10 @@ final class Adapter implements AdapterInterface
         }
 
         if ($file instanceof Directory) {
-            // Delete any file that may exist with the same name as the directory
-            $possibleFilePath = $root->resolve(
-                Path::of($file->name()->toString()),
-            );
-            $_ = $this
-                ->bucket
-                ->get($possibleFilePath)
-                ->flatMap(fn() => $this->bucket->delete($possibleFilePath))
-                ->match(
-                    static fn() => null,
-                    static fn() => null,
-                );
-            $all = match ($this->keepEmptyDirectories) {
-                true => $file->all()->add(File::named(self::VOID_FILE, Content::none())),
-                false => $file->all(),
-            };
-            $persisted = $all
-                ->map(function($file) use ($path) {
-                    $this->upload($path, $file)->unwrap();
-
-                    return $file;
-                })
-                ->map(static fn($file) => $file->name()->toString())
-                ->memoize()
-                ->toSet();
-
-            return Sequence::of(...$file->removed()->toList())
-                ->filter(static fn($file) => !$persisted->contains($file->toString()))
-                ->map(fn($file) => $this->resolve(
-                    $path,
-                    File::of($file, Content::none()), // wrap name as a file because we can't know if the name represent a file or name
-                ))
-                ->flatMap($this->doRemove(...))
-                ->sink(SideEffect::identity())
-                ->maybe(static fn($_, $call) => $call)
-                ->attempt(static fn() => new \RuntimeException('Failed to remove files'));
+            return $this
+                ->removeEventualFileWithSameName($root, $file)
+                ->flatMap(fn() => $this->uploadFiles($path, $file))
+                ->flatMap(fn($uploaded) => $this->removeFiles($uploaded, $path, $file));
         }
 
         return $this
@@ -290,5 +259,75 @@ final class Adapter implements AdapterInterface
 
                 yield $remove;
             }));
+    }
+
+    /**
+     * @return Attempt<SideEffect>
+     */
+    private function removeEventualFileWithSameName(
+        Path $root,
+        Directory $directory,
+    ): Attempt {
+        // Delete any file that may exist with the same name as the directory
+        $possibleFilePath = $root->resolve(
+            Path::of($directory->name()->toString()),
+        );
+
+        return $this
+            ->bucket
+            ->get($possibleFilePath)
+            ->eitherWay(
+                fn() => $this->bucket->delete($possibleFilePath),
+                static fn() => Maybe::just(SideEffect::identity()),
+            )
+            ->attempt(static fn() => new \RuntimeException('Failed to remove file with the same name'));
+    }
+
+    /**
+     * @return Attempt<Set<non-empty-string>>
+     */
+    private function uploadFiles(
+        Path $path,
+        Directory $directory,
+    ): Attempt {
+        $all = match ($this->keepEmptyDirectories) {
+            true => $directory->all()->add(File::named(self::VOID_FILE, Content::none())),
+            false => $directory->all(),
+        };
+
+        /** @var Set<non-empty-string> */
+        $uploaded = Set::of();
+
+        return $all
+            ->sink($uploaded)
+            ->attempt(
+                fn($uploaded, $file) => $this
+                    ->upload($path, $file)
+                    ->map(static fn() => $file->name()->toString())
+                    ->map($uploaded),
+            )
+            ->memoize();
+    }
+
+    /**
+     * @param Set<non-empty-string> $uploaded
+     *
+     * @return Attempt<SideEffect>
+     */
+    private function removeFiles(
+        Set $uploaded,
+        Path $path,
+        Directory $directory,
+    ): Attempt {
+        return Sequence::of(...$directory->removed()->toList())
+            ->filter(static fn($file) => !$uploaded->contains($file->toString()))
+            ->map(fn($file) => $this->resolve(
+                $path,
+                File::of($file, Content::none()), // wrap name as a file because we can't know if the name represent a file or directory
+            ))
+            ->flatMap($this->doRemove(...))
+            ->sink(SideEffect::identity())
+            ->maybe(static fn($_, $call) => $call)
+            ->attempt(static fn() => new \RuntimeException('Failed to remove files'));
     }
 }
