@@ -158,7 +158,7 @@ final class OverHttp implements Bucket
     private function paginate(
         Path $path,
         array $query,
-        string $next = null,
+        ?string $next = null,
     ): Sequence {
         if (\is_string($next)) {
             $next = ['continuation-token' => $next];
@@ -235,8 +235,8 @@ final class OverHttp implements Bucket
     private function request(
         Method $method,
         Path $path,
-        Content $content = null,
-        Query $query = null,
+        ?Content $content = null,
+        ?Query $query = null,
     ): Request {
         $content ??= Content::none();
         $now = $this->clock->now()->changeTimezone(new UTC);
