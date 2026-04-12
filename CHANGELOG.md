@@ -1,5 +1,17 @@
 # Changelog
 
+## 6.0.0 - 2026-04-12
+
+### Changed
+
+- Requires PHP `8.4`
+- Requires `innmind/foundation:~2.1`
+- `Innmind\S3\Bucket::exists()` no longer fetches the file content
+
+### Removed
+
+- `Innmind\S3\Filesystem`
+
 ## 5.0.0 - 2025-06-02
 
 ### Changed

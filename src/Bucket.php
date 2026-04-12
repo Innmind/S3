@@ -11,7 +11,7 @@ use Innmind\Url\{
 };
 use Innmind\HttpTransport\Transport;
 use Innmind\Filesystem\File\Content;
-use Innmind\TimeContinuum\{
+use Innmind\Time\{
     Clock,
     Offset,
 };
@@ -66,6 +66,7 @@ final class Bucket
      *
      * @return Maybe<Content>
      */
+    #[\NoDiscard]
     public function get(Path $path): Maybe
     {
         if ($path->directory()) {
@@ -82,6 +83,7 @@ final class Bucket
      *
      * @return Attempt<SideEffect>
      */
+    #[\NoDiscard]
     public function upload(Path $path, Content $content): Attempt
     {
         return ($this->fulfill)($this->request(Method::put, $path, $content))
@@ -90,7 +92,7 @@ final class Bucket
                 $path->toString(),
                 $error::class,
             )))
-            ->map(static fn() => new SideEffect);
+            ->map(SideEffect::identity(...));
     }
 
     /**
@@ -98,6 +100,7 @@ final class Bucket
      *
      * @return Attempt<SideEffect>
      */
+    #[\NoDiscard]
     public function delete(Path $path): Attempt
     {
         return ($this->fulfill)($this->request(Method::delete, $path))
@@ -106,7 +109,7 @@ final class Bucket
                 $path->toString(),
                 $error::class,
             )))
-            ->map(static fn() => new SideEffect);
+            ->map(SideEffect::identity(...));
     }
 
     /**
@@ -118,7 +121,7 @@ final class Bucket
             return !$this->enumerate($path)->empty();
         }
 
-        return $this->get($path)->match(
+        return ($this->fulfill)($this->request(Method::head, $path))->match(
             static fn() => true,
             static fn() => false,
         );
@@ -129,6 +132,7 @@ final class Bucket
      *
      * @return Sequence<Path> Paths are relative to $path
      */
+    #[\NoDiscard]
     public function list(Path $path): Sequence
     {
         return $this
