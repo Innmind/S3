@@ -11,7 +11,7 @@ use Innmind\Url\{
 };
 use Innmind\HttpTransport\Transport;
 use Innmind\Filesystem\File\Content;
-use Innmind\TimeContinuum\{
+use Innmind\Time\{
     Clock,
     Offset,
 };
@@ -90,7 +90,7 @@ final class Bucket
                 $path->toString(),
                 $error::class,
             )))
-            ->map(static fn() => new SideEffect);
+            ->map(SideEffect::identity(...));
     }
 
     /**
@@ -106,7 +106,7 @@ final class Bucket
                 $path->toString(),
                 $error::class,
             )))
-            ->map(static fn() => new SideEffect);
+            ->map(SideEffect::identity(...));
     }
 
     /**

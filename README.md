@@ -42,22 +42,3 @@ $bucket->upload(Path::of('some-other-name.txt'), $file)->match( // essentially t
     static fn(\Throwable $e) => throw $e,
 );
 ```
-
-To simplify some usage you can use the filesystem adapter on top of the bucket interface. Here's an example to upload a directory to a bucket:
-
-```php
-use Innmind\S3\Filesystem;
-use Innmind\Filesystem\Name;
-
-$data = $os->filsystem()->mount(Path::of('/var/data'));
-$s3 = Filesystem::of($bucket);
-$data
-    ->get(Name::of('images'))
-    ->match(
-        static fn($file) => $s3->add($file)->unwrap(),
-        static fn() => null, // do something if there is no images
-    );
-```
-
-> [!WARNING]
-> A bucket can contain a file and a directory with the same name. This is not supported by `innmind/filesystem` adapters. This means that if you use `Innmind\S3\Filesystem\Adapter` on a bucket where there is a file and a directory with the same name it will result in unexpected behaviour or an exception.
