@@ -6,6 +6,7 @@
 
 - Requires PHP `8.4`
 - Requires `innmind/foundation:~2.1`
+- `Innmind\S3\Bucket::exists()` no longer fetches the file content
 
 ### Removed
 

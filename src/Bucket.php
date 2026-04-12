@@ -121,7 +121,7 @@ final class Bucket
             return !$this->enumerate($path)->empty();
         }
 
-        return $this->get($path)->match(
+        return ($this->fulfill)($this->request(Method::head, $path))->match(
             static fn() => true,
             static fn() => false,
         );
