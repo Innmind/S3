@@ -66,6 +66,7 @@ final class Bucket
      *
      * @return Maybe<Content>
      */
+    #[\NoDiscard]
     public function get(Path $path): Maybe
     {
         if ($path->directory()) {
@@ -82,6 +83,7 @@ final class Bucket
      *
      * @return Attempt<SideEffect>
      */
+    #[\NoDiscard]
     public function upload(Path $path, Content $content): Attempt
     {
         return ($this->fulfill)($this->request(Method::put, $path, $content))
@@ -98,6 +100,7 @@ final class Bucket
      *
      * @return Attempt<SideEffect>
      */
+    #[\NoDiscard]
     public function delete(Path $path): Attempt
     {
         return ($this->fulfill)($this->request(Method::delete, $path))
@@ -129,6 +132,7 @@ final class Bucket
      *
      * @return Sequence<Path> Paths are relative to $path
      */
+    #[\NoDiscard]
     public function list(Path $path): Sequence
     {
         return $this
