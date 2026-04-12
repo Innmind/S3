@@ -1,7 +1,7 @@
 # S3
 
+[![CI](https://github.com/Innmind/S3/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Innmind/S3/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Innmind/S3/branch/develop/graph/badge.svg)](https://codecov.io/gh/Innmind/S3)
-[![Build Status](https://github.com/Innmind/S3/workflows/CI/badge.svg?branch=master)](https://github.com/Innmind/S3/actions?query=workflow%3ACI)
 [![Type Coverage](https://shepherd.dev/github/Innmind/S3/coverage.svg)](https://shepherd.dev/github/Innmind/S3)
 
 Minimalist abstraction to work with any S3 bucket.
