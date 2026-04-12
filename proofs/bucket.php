@@ -165,11 +165,11 @@ return static function() {
                 ->in($paths);
 
             // cleanup
-            $bucket->delete(Path::of($directory1.'/'.$file))->match(
+            $_ = $bucket->delete(Path::of($directory1.'/'.$file))->match(
                 static fn() => null,
                 static fn() => null,
             );
-            $bucket->delete(Path::of($directory1.'/'.$directory2.'/'.$file))->match(
+            $_ = $bucket->delete(Path::of($directory1.'/'.$directory2.'/'.$file))->match(
                 static fn() => null,
                 static fn() => null,
             );

@@ -3,7 +3,7 @@ declare(strict_types = 1);
 
 namespace Innmind\S3\Format;
 
-use Innmind\TimeContinuum\Format;
+use Innmind\Time\Format;
 
 /**
  * @psalm-immutable

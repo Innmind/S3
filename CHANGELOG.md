@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Requires PHP `8.4`
+- Requires `innmind/foundation:~2.1`
+
+### Removed
+
+- `Innmind\S3\Filesystem`
+
 ## 5.0.0 - 2025-06-02
 
 ### Changed
